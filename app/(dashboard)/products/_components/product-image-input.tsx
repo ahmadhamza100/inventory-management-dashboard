@@ -54,6 +54,8 @@ export function ProductImageInput() {
     [uploadImage, form]
   )
 
+  const isPending = form.formState.isSubmitting
+
   const {
     getRootProps,
     getInputProps,
@@ -67,7 +69,7 @@ export function ProductImageInput() {
     maxFiles: 1,
     multiple: false,
     maxSize: 10 * 1024 * 1024,
-    disabled: isUploading
+    disabled: isUploading || isPending
   })
 
   const isDragActive = _isDragActive && !isDragReject
@@ -121,7 +123,7 @@ export function ProductImageInput() {
                 variant="solid"
                 color="danger"
                 onPress={removeImage}
-                isDisabled={isUploading}
+                isDisabled={isUploading || isPending}
                 aria-label="Remove image"
                 className="absolute top-3 right-3 opacity-0 shadow-lg transition-all group-hover:opacity-100"
               >
@@ -136,12 +138,12 @@ export function ProductImageInput() {
                 "hover:border-primary/50 hover:bg-primary/5",
                 { "border-primary bg-primary/10": isDragActive },
                 { "border-danger bg-danger/10": isDragReject || imageError },
-                { "cursor-not-allowed opacity-50": isUploading }
+                { "cursor-not-allowed opacity-50": isUploading || isPending }
               )}
             >
               <input {...getInputProps()} id="product-image" />
 
-              {isUploading ? (
+              {isUploading || isPending ? (
                 <div className="flex flex-col items-center gap-3">
                   <Spinner size="lg" color="primary" />
                   <span className="text-sm font-medium text-default-600">

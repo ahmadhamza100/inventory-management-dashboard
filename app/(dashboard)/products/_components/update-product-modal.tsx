@@ -6,7 +6,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/react"
 
 export function UpdateProductModal() {
   const onClose = useProductModalStore((state) => state.onClose)
-  const product = useProductModalStore((state) => state.product)
+  const productName = useProductModalStore((state) => state.product?.name)
   const isOpen = useProductModalStore(
     (state) => state.isOpen && state.type === "update"
   )
@@ -19,12 +19,12 @@ export function UpdateProductModal() {
           <p className="text-sm font-normal text-default-500">
             Update details for{" "}
             <span className="font-medium text-foreground">
-              {product?.name ?? "this product"}
+              {productName ?? "this product"}
             </span>
           </p>
         </ModalHeader>
         <ModalBody className="pb-6">
-          <ProductsForm initialValues={product ?? undefined} />
+          <ProductsForm />
         </ModalBody>
       </ModalContent>
     </Modal>

@@ -4,35 +4,7 @@ import { Logo } from "@/components/logo"
 import { cn } from "@heroui/react"
 import { useSidebar } from "./context"
 import { SidebarItem } from "./sidebar-item"
-import {
-  IconLayoutDashboard,
-  IconPackage,
-  IconFileInvoice,
-  IconUsers
-} from "@tabler/icons-react"
-
-const sidebarItems = [
-  {
-    href: "/",
-    icon: <IconLayoutDashboard size={20} />,
-    label: "Dashboard"
-  },
-  {
-    href: "/products",
-    icon: <IconPackage size={20} />,
-    label: "Products"
-  },
-  {
-    href: "/invoices",
-    icon: <IconFileInvoice size={20} />,
-    label: "Invoices"
-  },
-  {
-    href: "/customers",
-    icon: <IconUsers size={20} />,
-    label: "Customers"
-  }
-]
+import { SIDEBAR_ITEMS } from "./items"
 
 export function Sidebar() {
   const { isOpen } = useSidebar()
@@ -56,7 +28,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-3">
-        {sidebarItems.map((item) => (
+        {SIDEBAR_ITEMS.map((item) => (
           <SidebarItem key={item.href} {...item} />
         ))}
       </nav>

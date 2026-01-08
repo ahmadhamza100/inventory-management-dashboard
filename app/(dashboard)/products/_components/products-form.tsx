@@ -1,44 +1,89 @@
 "use client"
 
-import { useForm, Controller, FormProvider } from "react-hook-form"
+import { useEffect, useMemo } from "react"
+import { api } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Button, Input, NumberInput } from "@heroui/react"
-import { type ProductSchema, productSchema } from "@/validations/product"
+import { useQueryClient } from "@tanstack/react-query"
+import { Button, Input, NumberInput, addToast } from "@heroui/react"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
 import { useIsUploadingImage } from "@/mutations/use-upload-image"
+import { gerErrorMessage } from "@/utils/error-handler"
+import { FormError } from "@/components/form-error"
 import { ProductImageInput } from "./product-image-input"
+import { type ProductSchema, productSchema } from "@/validations/product"
+import {
+  useForm,
+  Controller,
+  FormProvider,
+  type DefaultValues
+} from "react-hook-form"
 
-export function ProductsForm({
-  initialValues
-}: {
-  initialValues?: ProductSchema
-}) {
+export function ProductsForm() {
   const onClose = useProductModalStore((state) => state.onClose)
+  const product = useProductModalStore((state) => state.product)
   const isUploading = useIsUploadingImage()
+  const queryClient = useQueryClient()
 
-  const form = useForm({
+  const isEditing = !!product
+
+  const defaultValues: DefaultValues<ProductSchema> = useMemo(() => {
+    return {
+      name: product?.name ?? "",
+      price: Number(product?.price) ?? undefined,
+      stock: product?.stock ?? undefined,
+      image: product?.image ?? null
+    }
+  }, [product])
+
+  const form = useForm<ProductSchema>({
     resolver: zodResolver(productSchema),
-    defaultValues: initialValues ?? {
-      name: "",
-      price: undefined,
-      stock: undefined,
-      image: null
+    defaultValues
+  })
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    try {
+      if (isEditing) {
+        await api.products[":id"].$patch({
+          json: values,
+          param: { id: product?.id }
+        })
+        addToast({
+          title: "Product updated successfully",
+          color: "success"
+        })
+      } else {
+        await api.products.$post({ json: values })
+        addToast({
+          title: "Product created successfully",
+          color: "success"
+        })
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+      onClose()
+    } catch (error) {
+      form.setError("root", {
+        message: gerErrorMessage(
+          error,
+          isEditing ? "Failed to update product" : "Failed to create product"
+        )
+      })
     }
   })
 
-  const onSubmit = form.handleSubmit((data) => {
-    console.log("Form data:", data)
-    onClose()
-  })
+  const isPending = form.formState.isSubmitting
 
-  const handleCancel = () => {
-    form.reset()
-    onClose()
-  }
+  useEffect(() => {
+    return () => {
+      form.reset(defaultValues)
+    }
+  }, [form, defaultValues])
 
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit} className="flex flex-col gap-6">
+        <FormError form={form} />
+
         <Controller
           control={form.control}
           name="name"
@@ -53,6 +98,7 @@ export function ProductsForm({
               placeholder="Enter product name"
               isInvalid={fieldState.invalid}
               errorMessage={fieldState.error?.message}
+              isDisabled={isPending}
             />
           )}
         />
@@ -71,6 +117,7 @@ export function ProductsForm({
                 step={0.01}
                 minValue={0}
                 isInvalid={fieldState.invalid}
+                isDisabled={isPending}
                 errorMessage={fieldState.error?.message}
                 classNames={{ inputWrapper: "shadow-none" }}
                 startContent={
@@ -93,6 +140,7 @@ export function ProductsForm({
                 step={1}
                 minValue={0}
                 isInvalid={fieldState.invalid}
+                isDisabled={isPending}
                 errorMessage={fieldState.error?.message}
                 classNames={{ inputWrapper: "shadow-none" }}
               />
@@ -106,18 +154,18 @@ export function ProductsForm({
           <Button
             type="button"
             variant="flat"
-            onPress={handleCancel}
-            isDisabled={isUploading}
+            onPress={onClose}
+            isDisabled={isUploading || isPending}
           >
             Cancel
           </Button>
           <Button
             type="submit"
             color="primary"
-            isLoading={form.formState.isSubmitting}
+            isLoading={isPending}
             isDisabled={isUploading}
           >
-            Create Product
+            {isEditing ? "Update Product" : "Create Product"}
           </Button>
         </div>
       </form>

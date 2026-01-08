@@ -1,6 +1,6 @@
 import {
   integer,
-  numeric,
+  decimal,
   pgTable,
   text,
   timestamp,
@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 const timestamps = {
+  deletedAt: timestamp(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp()
     .notNull()
@@ -19,9 +20,10 @@ const timestamps = {
 export const products = pgTable("products", {
   id: uuid().primaryKey().defaultRandom(),
   name: varchar({ length: 256 }).notNull(),
-  price: numeric({ precision: 10, scale: 2 }).notNull(),
+  price: decimal({ precision: 10, scale: 2 }).notNull(),
   stock: integer().notNull(),
-  image: text().notNull(),
+  sku: varchar({ length: 256 }).notNull(),
+  image: text(),
   ...timestamps
 })
 
@@ -41,8 +43,8 @@ export type Customer = typeof customers.$inferSelect
 export const invoices = pgTable("invoices", {
   id: uuid().primaryKey().defaultRandom(),
   customerId: uuid().references(() => customers.id),
-  total: numeric({ precision: 10, scale: 2 }).notNull(),
-  amountPaid: numeric({ precision: 10, scale: 2 }).notNull(),
+  total: decimal({ precision: 10, scale: 2 }).notNull(),
+  amountPaid: decimal({ precision: 10, scale: 2 }).notNull(),
   ...timestamps
 })
 
@@ -53,7 +55,7 @@ export const invoiceItems = pgTable("invoice_items", {
   invoiceId: uuid().references(() => invoices.id),
   productId: uuid().references(() => products.id),
   quantity: integer().notNull(),
-  price: numeric({ precision: 10, scale: 2 }).notNull(),
+  price: decimal({ precision: 10, scale: 2 }).notNull(),
   ...timestamps
 })
 

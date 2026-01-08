@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { type Product } from "@/queries/use-products-query"
+import { type Product } from "@/db/schema"
 
 type ProductModalType = "create" | "update" | "delete" | "view-invoices"
 

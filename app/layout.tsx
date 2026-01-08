@@ -3,6 +3,7 @@ import "@/styles/globals.css"
 import type { Metadata } from "next"
 import { cn } from "@heroui/react"
 import { Geist, Geist_Mono } from "next/font/google"
+import { NuqsAdapter } from "nuqs/adapters/next/app"
 
 import { HeroUIProvider } from "@/providers/hero-ui-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
@@ -39,7 +40,9 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ThemeProvider>
-            <HeroUIProvider>{children}</HeroUIProvider>
+            <HeroUIProvider>
+              <NuqsAdapter>{children}</NuqsAdapter>
+            </HeroUIProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

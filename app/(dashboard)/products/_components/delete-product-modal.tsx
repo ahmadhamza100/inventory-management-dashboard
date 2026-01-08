@@ -1,7 +1,12 @@
 "use client"
 
+import { useTransition } from "react"
+import { api } from "@/utils/api"
+import { useQueryClient } from "@tanstack/react-query"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
+import { addToast } from "@heroui/react"
 import { IconAlertTriangle } from "@tabler/icons-react"
+import { gerErrorMessage } from "@/utils/error-handler"
 import {
   Modal,
   ModalContent,
@@ -16,12 +21,31 @@ export function DeleteProductModal() {
   const isOpen = useProductModalStore(
     (state) => state.isOpen && state.type === "delete"
   )
+  const queryClient = useQueryClient()
+  const [isPending, startTransition] = useTransition()
 
   const handleDelete = () => {
-    if (product) {
-      console.log("Deleting product:", product.id)
-    }
-    onClose()
+    if (!product) return
+
+    startTransition(async () => {
+      try {
+        await api.products[":id"].$delete({
+          param: { id: product.id }
+        })
+
+        queryClient.invalidateQueries({ queryKey: ["products"] })
+        addToast({
+          title: "Product deleted",
+          color: "success"
+        })
+        onClose()
+      } catch (error) {
+        addToast({
+          title: gerErrorMessage(error, "Failed to delete product"),
+          color: "danger"
+        })
+      }
+    })
   }
 
   return (
@@ -44,10 +68,14 @@ export function DeleteProductModal() {
             </p>
 
             <div className="flex justify-end gap-3">
-              <Button variant="flat" onPress={onClose}>
+              <Button variant="flat" onPress={onClose} isDisabled={isPending}>
                 Cancel
               </Button>
-              <Button color="danger" onPress={handleDelete}>
+              <Button
+                color="danger"
+                onPress={handleDelete}
+                isLoading={isPending}
+              >
                 Delete
               </Button>
             </div>

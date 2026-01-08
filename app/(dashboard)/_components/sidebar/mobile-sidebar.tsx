@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { Link } from "@/components/link"
 import { Logo } from "@/components/logo"
+import { SIDEBAR_ITEMS } from "./items"
 import {
   Button,
   cn,
@@ -11,35 +12,6 @@ import {
   DrawerHeader,
   DrawerBody
 } from "@heroui/react"
-import {
-  IconLayoutDashboard,
-  IconPackage,
-  IconFileInvoice,
-  IconUsers
-} from "@tabler/icons-react"
-
-const sidebarItems = [
-  {
-    href: "/",
-    icon: <IconLayoutDashboard size={20} />,
-    label: "Dashboard"
-  },
-  {
-    href: "/products",
-    icon: <IconPackage size={20} />,
-    label: "Products"
-  },
-  {
-    href: "/invoices",
-    icon: <IconFileInvoice size={20} />,
-    label: "Invoices"
-  },
-  {
-    href: "/customers",
-    icon: <IconUsers size={20} />,
-    label: "Customers"
-  }
-]
 
 type MobileSidebarProps = {
   isOpen: boolean
@@ -65,22 +37,23 @@ export function MobileSidebar({ isOpen, onOpenChange }: MobileSidebarProps) {
             </DrawerHeader>
             <DrawerBody className="p-3">
               <nav className="space-y-1">
-                {sidebarItems.map((item) => {
+                {SIDEBAR_ITEMS.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <Button
                       key={item.href}
                       as={Link}
+                      onPress={onClose}
                       href={item.href}
                       variant={isActive ? "flat" : "light"}
                       color={isActive ? "primary" : "default"}
                       className="w-full justify-start gap-3"
                       startContent={
-                        <span className={cn(isActive && "text-primary")}>
-                          {item.icon}
-                        </span>
+                        <item.icon
+                          size={20}
+                          className={cn(isActive && "text-primary")}
+                        />
                       }
-                      onPress={onClose}
                     >
                       <span className="text-sm font-medium">{item.label}</span>
                     </Button>

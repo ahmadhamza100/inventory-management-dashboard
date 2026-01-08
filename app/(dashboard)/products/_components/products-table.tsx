@@ -2,10 +2,13 @@
 
 import orderBy from "lodash.orderby"
 import filter from "lodash.filter"
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useCallback } from "react"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
-import { useProductsQuery, type Product } from "@/queries/use-products-query"
+import { useProductsQuery } from "@/queries/use-products-query"
 import { formatPrice, formatDate } from "@/utils/helpers"
+import { parseAsString, parseAsStringEnum, useQueryStates } from "nuqs"
+import { productSortParser } from "@/utils/sorting-parsers"
+import type { Product } from "@/db/schema"
 import {
   IconSearch,
   IconAlertTriangle,
@@ -13,7 +16,9 @@ import {
   IconDotsVertical,
   IconFileInvoice,
   IconPencil,
-  IconTrash
+  IconTrash,
+  IconPhoto,
+  IconX
 } from "@tabler/icons-react"
 import {
   Table,
@@ -32,8 +37,7 @@ import {
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
-  DropdownItem,
-  type SortDescriptor
+  DropdownItem
 } from "@heroui/react"
 
 const columns = [
@@ -45,8 +49,6 @@ const columns = [
   { name: "", uid: "actions", sortable: false }
 ]
 
-type Availability = "all" | "in_stock" | "out_of_stock"
-
 export function ProductsTable() {
   const {
     data: products,
@@ -57,11 +59,17 @@ export function ProductsTable() {
   } = useProductsQuery()
 
   const openProductModal = useProductModalStore((state) => state.onOpen)
-  const [filterValue, setFilterValue] = useState("")
-  const [availability, setAvailability] = useState<Availability>("all")
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "createdAt",
-    direction: "descending"
+  const [{ q, availability, sort }, setSearchParams] = useQueryStates({
+    q: parseAsString.withDefault(""),
+    availability: parseAsStringEnum([
+      "all",
+      "in_stock",
+      "out_of_stock"
+    ]).withDefault("all"),
+    sort: productSortParser.withDefault({
+      column: "createdAt",
+      direction: "descending"
+    })
   })
 
   const filteredItems = useMemo(() => {
@@ -69,7 +77,7 @@ export function ProductsTable() {
 
     let filtered = [...products]
 
-    const query = filterValue.trim().toLowerCase()
+    const query = q.trim().toLowerCase()
     if (query) {
       filtered = filter(
         filtered,
@@ -86,14 +94,12 @@ export function ProductsTable() {
     }
 
     return filtered
-  }, [products, filterValue, availability])
+  }, [products, q, availability])
 
   const sortedItems = useMemo(() => {
-    const column = sortDescriptor.column as keyof Product
-    const direction = sortDescriptor.direction === "descending" ? "desc" : "asc"
-
-    return orderBy(filteredItems, [column], [direction])
-  }, [filteredItems, sortDescriptor])
+    const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
+    return orderBy(filteredItems, [sort.column], [lodashDirection])
+  }, [filteredItems, sort])
 
   const renderCell = useCallback(
     (product: Product, columnKey: React.Key) => {
@@ -101,14 +107,20 @@ export function ProductsTable() {
         case "name":
           return (
             <div className="flex items-center gap-3">
-              <Image
-                src={product.image}
-                alt={product.name}
-                width={40}
-                height={40}
-                radius="md"
-                className="shrink-0 object-cover"
-              />
+              {product.image ? (
+                <Image
+                  src={product.image}
+                  alt={product.name}
+                  width={40}
+                  height={40}
+                  radius="md"
+                  className="shrink-0 object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-default-100">
+                  <IconPhoto className="size-5 text-default-400" />
+                </div>
+              )}
               <span className="truncate text-sm font-medium">
                 {product.name}
               </span>
@@ -117,6 +129,7 @@ export function ProductsTable() {
         case "sku":
           return (
             <button
+              type="button"
               className="font-mono text-sm text-default-500"
               onClick={() => navigator.clipboard.writeText(product.sku)}
             >
@@ -193,6 +206,21 @@ export function ProductsTable() {
   const totalCount = products?.length ?? 0
   const filteredCount = filteredItems.length
 
+  type Availability = NonNullable<typeof availability>
+
+  const hasActiveFilters = q.trim() !== "" || availability !== "all"
+
+  const handleClearFilters = useCallback(() => {
+    setSearchParams({
+      q: "",
+      availability: "all",
+      sort: {
+        column: "createdAt",
+        direction: "descending"
+      }
+    })
+  }, [setSearchParams])
+
   const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
@@ -209,27 +237,46 @@ export function ProductsTable() {
             className="w-full sm:max-w-xs"
             placeholder="Search by name..."
             startContent={<IconSearch size={18} className="text-default-400" />}
-            value={filterValue}
-            onClear={() => setFilterValue("")}
-            onValueChange={setFilterValue}
+            value={q}
+            onClear={() => setSearchParams({ q: "" })}
+            onValueChange={(value) => setSearchParams({ q: value })}
           />
           <Select
             className="w-full sm:w-40"
             selectedKeys={[availability]}
             aria-label="Filter by availability"
             onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as Availability
-              setAvailability(selected)
+              const selected = Array.from(keys)[0]
+              setSearchParams({ availability: selected as Availability })
             }}
           >
             <SelectItem key="all">All</SelectItem>
             <SelectItem key="in_stock">In Stock</SelectItem>
             <SelectItem key="out_of_stock">Out of Stock</SelectItem>
           </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="flat"
+              color="danger"
+              startContent={<IconX size={16} />}
+              onPress={handleClearFilters}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
       </div>
     )
-  }, [filterValue, availability, filteredCount, totalCount])
+  }, [
+    q,
+    availability,
+    filteredCount,
+    totalCount,
+    setSearchParams,
+    hasActiveFilters,
+    handleClearFilters
+  ])
 
   if (isError) {
     return (
@@ -261,8 +308,15 @@ export function ProductsTable() {
       aria-label="Products table"
       topContent={topContent}
       topContentPlacement="outside"
-      sortDescriptor={sortDescriptor}
-      onSortChange={setSortDescriptor}
+      sortDescriptor={{ column: sort.column, direction: sort.direction }}
+      onSortChange={({ column, direction }) => {
+        setSearchParams({
+          sort: {
+            column: column as typeof sort.column,
+            direction: direction as typeof sort.direction
+          }
+        })
+      }}
     >
       <TableHeader columns={columns}>
         {(column) => (
