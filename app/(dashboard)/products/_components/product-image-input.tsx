@@ -87,7 +87,11 @@ export function ProductImageInput() {
       control={form.control}
       name="image"
       render={() => (
-        <div className="flex flex-col gap-2">
+        <div
+          className={cn("flex flex-col gap-2", {
+            "pointer-events-none opacity-50": isPending
+          })}
+        >
           <label
             htmlFor="product-image"
             className="text-sm font-medium text-foreground"
@@ -143,7 +147,7 @@ export function ProductImageInput() {
             >
               <input {...getInputProps()} id="product-image" />
 
-              {isUploading || isPending ? (
+              {isUploading ? (
                 <div className="flex flex-col items-center gap-3">
                   <Spinner size="lg" color="primary" />
                   <span className="text-sm font-medium text-default-600">

@@ -1,16 +1,30 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, eq, isNull } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { customerSchema } from "@/validations/customer"
-import { customers } from "@/db/schema"
+import { customers, invoices } from "@/db/schema"
 
 export const customersRouter = new Hono()
   .get("/", async (c) => {
     const data = await db
-      .select()
+      .select({
+        id: customers.id,
+        name: customers.name,
+        email: customers.email,
+        phone: customers.phone,
+        address: customers.address,
+        deletedAt: customers.deletedAt,
+        createdAt: customers.createdAt,
+        updatedAt: customers.updatedAt,
+        invoicesCount: sql<number>`COALESCE(COUNT(${invoices.id}), 0)`.as(
+          "invoicesCount"
+        )
+      })
       .from(customers)
+      .leftJoin(invoices, eq(invoices.customerId, customers.id))
       .where(isNull(customers.deletedAt))
+      .groupBy(customers.id)
 
     return c.$json(data)
   })
