@@ -61,6 +61,15 @@ function randomFloat(min: number, max: number) {
   return Number((Math.random() * (max - min) + min).toFixed(2))
 }
 
+function randomDateInMonth(year: number, month: number): Date {
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const day = randomInt(1, daysInMonth)
+  const hour = randomInt(0, 23)
+  const minute = randomInt(0, 59)
+  const second = randomInt(0, 59)
+  return new Date(year, month, day, hour, minute, second)
+}
+
 async function seed() {
   console.log("🌱 Starting seed...")
 
@@ -107,57 +116,115 @@ async function seed() {
 
   console.log(`✅ Created ${seededProducts.length} products`)
 
-  // Seed invoices with items
-  console.log("🧾 Seeding invoices...")
-  const invoiceCount = randomInt(15, 25)
-  const seededInvoices = []
+  // Seed invoices with items spread across the last 12 months
+  console.log("🧾 Preparing invoice data across the last 12 months...")
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
 
-  for (let i = 0; i < invoiceCount; i++) {
-    const customer = seededCustomers[randomInt(0, seededCustomers.length - 1)]
-    const itemCount = randomInt(1, 10)
+  // Prepare all invoice data first using flatMap
+  const invoiceData = Array.from({ length: 12 }, (_, monthOffset) => {
+    const targetMonth = currentMonth - (11 - monthOffset)
+    const year = targetMonth < 0 ? currentYear - 1 : currentYear
+    const month = targetMonth < 0 ? 12 + targetMonth : targetMonth
 
-    // Select random products for this invoice
-    const selectedProducts = Array.from({ length: itemCount }, () => {
-      const product = seededProducts[randomInt(0, seededProducts.length - 1)]
-      const quantity = randomInt(1, 5)
-      return {
-        product,
-        quantity,
-        price: product.price
-      }
+    const monthName = new Date(year, month, 1).toLocaleString("default", {
+      month: "long",
+      year: "numeric"
     })
 
-    // Calculate invoice total
-    const total = selectedProducts.reduce(
-      (sum, item) => sum + Number(item.price) * item.quantity,
-      0
+    // Random number of invoices per month (2-10)
+    const invoicesPerMonth = randomInt(2, 10)
+    console.log(
+      `  📅 Preparing ${invoicesPerMonth} invoices for ${monthName}...`
     )
-    const amountPaid = randomFloat(total * 0.5, total)
 
-    // Create invoice
-    const [invoice] = await db
-      .insert(invoices)
-      .values({
-        customerId: customer.id,
-        total: total.toString(),
-        amountPaid: amountPaid.toString()
+    return Array.from({ length: invoicesPerMonth }, () => {
+      const customer = seededCustomers[randomInt(0, seededCustomers.length - 1)]
+      const itemCount = randomInt(1, 10)
+
+      // Select random products for this invoice
+      const selectedProducts = Array.from({ length: itemCount }, () => {
+        const product = seededProducts[randomInt(0, seededProducts.length - 1)]
+        const quantity = randomInt(1, 5)
+        return {
+          product,
+          quantity,
+          price: product.price
+        }
       })
-      .returning()
 
-    seededInvoices.push(invoice)
+      // Calculate invoice total
+      const total = selectedProducts.reduce(
+        (sum, item) => sum + Number(item.price) * item.quantity,
+        0
+      )
 
-    // Create invoice items
-    await db.insert(invoiceItems).values(
-      selectedProducts.map((item) => ({
-        invoiceId: invoice.id,
-        productId: item.product.id,
-        quantity: item.quantity,
-        price: item.price
-      }))
-    )
-  }
+      // Randomly decide payment status: 40% fully paid, 40% partially paid, 20% unpaid
+      const paymentStatus = Math.random()
+      const amountPaid =
+        paymentStatus < 0.4
+          ? total // Fully paid
+          : paymentStatus < 0.8
+            ? randomFloat(total * 0.1, total * 0.9) // Partially paid
+            : randomFloat(0, total * 0.3) // Mostly unpaid
 
-  console.log(`✅ Created ${seededInvoices.length} invoices with items`)
+      // Generate random date within the month
+      const invoiceDate = randomDateInMonth(year, month)
+
+      return {
+        invoice: {
+          customerId: customer.id,
+          total: total.toString(),
+          amountPaid: amountPaid.toString(),
+          createdAt: invoiceDate,
+          updatedAt: invoiceDate
+        },
+        items: selectedProducts.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.price,
+          createdAt: invoiceDate,
+          updatedAt: invoiceDate
+        }))
+      }
+    })
+  }).flat()
+
+  const invoicesToInsert = invoiceData.map((data) => data.invoice)
+
+  const invoiceItemsToInsert = invoiceData.flatMap((data, invoiceIndex) =>
+    data.items.map((item) => ({
+      invoiceIndex,
+      ...item
+    }))
+  )
+
+  // Bulk insert all invoices
+  console.log(`💾 Bulk inserting ${invoicesToInsert.length} invoices...`)
+  const seededInvoices = await db
+    .insert(invoices)
+    .values(invoicesToInsert)
+    .returning()
+
+  // Bulk insert all invoice items
+  console.log(
+    `💾 Bulk inserting ${invoiceItemsToInsert.length} invoice items...`
+  )
+  await db.insert(invoiceItems).values(
+    invoiceItemsToInsert.map((item) => ({
+      invoiceId: seededInvoices[item.invoiceIndex].id,
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }))
+  )
+
+  console.log(
+    `✅ Created ${seededInvoices.length} invoices with items across 12 months`
+  )
 
   console.log("✨ Seed completed successfully!")
 }

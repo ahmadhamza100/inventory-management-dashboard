@@ -1,10 +1,14 @@
-export function formatPrice(amount: string | number, currency = "PKR") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0
-  }).format(Number(amount))
+export const FORMAT_CURRENCY_OPTS = {
+  style: "currency",
+  currency: "PKR",
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0
+} satisfies Intl.NumberFormatOptions
+
+export function formatPrice(amount: string | number) {
+  return new Intl.NumberFormat("en-US", FORMAT_CURRENCY_OPTS).format(
+    Number(amount)
+  )
 }
 
 export function formatDate(date: Date | string) {

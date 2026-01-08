@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, isNull, count } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { customerSchema } from "@/validations/customer"
 import { customers, invoices } from "@/db/schema"
@@ -17,9 +17,7 @@ export const customersRouter = new Hono()
         deletedAt: customers.deletedAt,
         createdAt: customers.createdAt,
         updatedAt: customers.updatedAt,
-        invoicesCount: sql<number>`COALESCE(COUNT(${invoices.id}), 0)`.as(
-          "invoicesCount"
-        )
+        invoicesCount: count(invoices.id)
       })
       .from(customers)
       .leftJoin(invoices, eq(invoices.customerId, customers.id))

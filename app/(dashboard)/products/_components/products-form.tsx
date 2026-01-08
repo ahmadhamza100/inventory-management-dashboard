@@ -10,6 +10,7 @@ import { useIsUploadingImage } from "@/mutations/use-upload-image"
 import { gerErrorMessage } from "@/utils/error-handler"
 import { FormError } from "@/components/form-error"
 import { ProductImageInput } from "./product-image-input"
+import { FORMAT_CURRENCY_OPTS } from "@/utils/helpers"
 import { type ProductSchema, productSchema } from "@/validations/product"
 import {
   useForm,
@@ -120,9 +121,7 @@ export function ProductsForm() {
                 isDisabled={isPending}
                 errorMessage={fieldState.error?.message}
                 classNames={{ inputWrapper: "shadow-none" }}
-                startContent={
-                  <span className="text-small text-default-400">PKR</span>
-                }
+                formatOptions={FORMAT_CURRENCY_OPTS}
               />
             )}
           />

@@ -1,6 +1,8 @@
 import { Hono } from "hono"
 import { productsRouter } from "@api/routers/products.router"
 import { customersRouter } from "@api/routers/customers.router"
+import { invoicesRouter } from "@api/routers/invoices.router"
+import { analyticsRouter } from "@api/routers/analytics.router"
 import { superJsonMiddleware } from "@api/middlewares/super-json"
 import { authMiddleware } from "@api/middlewares/auth"
 import { HTTPException } from "hono/http-exception"
@@ -14,6 +16,8 @@ const app = new Hono()
 const routes = app
   .route("/products", productsRouter)
   .route("/customers", customersRouter)
+  .route("/invoices", invoicesRouter)
+  .route("/analytics", analyticsRouter)
 
 app.onError((err, c) => {
   console.error("[API Error]", c.req.method, c.req.path, err)

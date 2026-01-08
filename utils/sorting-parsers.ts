@@ -75,3 +75,9 @@ export const customerSortParser = createSortParser({
   defaultColumn: "createdAt",
   defaultDirection: "descending"
 })
+
+export const invoiceSortParser = createSortParser({
+  validColumns: ["createdAt", "total", "amountPaid"] as const,
+  defaultColumn: "createdAt",
+  defaultDirection: "descending"
+})
