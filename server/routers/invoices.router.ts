@@ -25,7 +25,7 @@ export const invoicesRouter = new Hono()
         }
       })
       .from(invoices)
-      .leftJoin(customers, eq(customers.id, invoices.customerId))
+      .innerJoin(customers, eq(customers.id, invoices.customerId))
       .where(isNull(invoices.deletedAt))
 
     // Early return if no invoices
