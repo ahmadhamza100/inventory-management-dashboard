@@ -22,3 +22,26 @@ export function formatDate(date: Date | string) {
 export function generateSKU() {
   return `SKU-${Math.random().toString(36).substring(2, 15)}`
 }
+
+export function generateInvoiceId(sequenceNumber: number): string {
+  const padded = sequenceNumber.toString().padStart(6, "0")
+  return `INV-${padded}`
+}
+
+export type PaymentStatus = "paid" | "partially_paid" | "unpaid"
+
+export function getPaymentStatus(
+  total: string | number,
+  amountPaid: string | number
+): PaymentStatus {
+  const totalNum = Number(total)
+  const paidNum = Number(amountPaid)
+
+  if (paidNum >= totalNum) {
+    return "paid"
+  } else if (paidNum > 0) {
+    return "partially_paid"
+  } else {
+    return "unpaid"
+  }
+}

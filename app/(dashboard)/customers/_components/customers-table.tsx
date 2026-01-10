@@ -42,7 +42,7 @@ const columns = [
   { name: "EMAIL", uid: "email", sortable: true },
   { name: "PHONE", uid: "phone", sortable: true },
   { name: "INVOICES", uid: "invoicesCount", sortable: true },
-  { name: "CREATED", uid: "createdAt", sortable: true },
+  { name: "DATE", uid: "createdAt", sortable: true },
   { name: "", uid: "actions", sortable: false }
 ]
 

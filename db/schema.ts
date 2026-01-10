@@ -41,7 +41,7 @@ export const customers = pgTable("customers", {
 export type Customer = typeof customers.$inferSelect
 
 export const invoices = pgTable("invoices", {
-  id: uuid().primaryKey().defaultRandom(),
+  id: varchar({ length: 50 }).primaryKey().notNull(),
   customerId: uuid().references(() => customers.id),
   total: decimal({ precision: 10, scale: 2 }).notNull(),
   amountPaid: decimal({ precision: 10, scale: 2 }).notNull(),
@@ -52,7 +52,9 @@ export type Invoice = typeof invoices.$inferSelect
 
 export const invoiceItems = pgTable("invoice_items", {
   id: uuid().primaryKey().defaultRandom(),
-  invoiceId: uuid().references(() => invoices.id),
+  invoiceId: varchar({ length: 50 })
+    .notNull()
+    .references(() => invoices.id, { onDelete: "cascade" }),
   productId: uuid().references(() => products.id),
   quantity: integer().notNull(),
   price: decimal({ precision: 10, scale: 2 }).notNull(),

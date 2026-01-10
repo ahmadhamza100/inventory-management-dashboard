@@ -1,13 +1,13 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, eq, inArray, isNull } from "drizzle-orm"
+import { and, eq, inArray, isNull, desc, sql } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { invoiceSchema } from "@/validations/invoice"
 import { invoices, invoiceItems, customers, products } from "@/db/schema"
+import { generateInvoiceId } from "@/utils/helpers"
 
 export const invoicesRouter = new Hono()
   .get("/", async (c) => {
-    // Fetch invoices with customer data
     const invoicesData = await db
       .select({
         id: invoices.id,
@@ -27,16 +27,14 @@ export const invoicesRouter = new Hono()
       .from(invoices)
       .innerJoin(customers, eq(customers.id, invoices.customerId))
       .where(isNull(invoices.deletedAt))
+      .orderBy(desc(invoices.createdAt))
 
-    // Early return if no invoices
     if (invoicesData.length === 0) {
       return c.$json([])
     }
 
-    // Extract invoice IDs for filtering
     const invoiceIds = invoicesData.map((inv) => inv.id)
 
-    // Fetch invoice items with product details (filtered by invoice IDs for better performance)
     const invoiceItemsData = await db
       .select({
         invoiceId: invoiceItems.invoiceId,
@@ -44,7 +42,8 @@ export const invoicesRouter = new Hono()
         price: invoiceItems.price,
         product: {
           name: products.name,
-          stock: products.stock
+          stock: products.stock,
+          image: products.image
         }
       })
       .from(invoiceItems)
@@ -56,7 +55,6 @@ export const invoicesRouter = new Hono()
         )
       )
 
-    // Group invoice items by invoice ID using reduce
     const itemsByInvoiceId = invoiceItemsData.reduce(
       (acc, item) => {
         if (!item.invoiceId) return acc
@@ -67,7 +65,8 @@ export const invoicesRouter = new Hono()
           name: item.product?.name ?? null,
           price: item.price,
           stock: item.product?.stock ?? null,
-          quantity: item.quantity
+          quantity: item.quantity,
+          image: item.product?.image ?? null
         })
         return acc
       },
@@ -78,11 +77,11 @@ export const invoicesRouter = new Hono()
           price: string
           stock: number | null
           quantity: number
+          image: string | null
         }>
       >
     )
 
-    // Combine invoices with their product items
     const data = invoicesData.map((invoice) => ({
       ...invoice,
       products: itemsByInvoiceId[invoice.id] ?? []
@@ -94,23 +93,28 @@ export const invoicesRouter = new Hono()
   .post("/", zValidator("json", invoiceSchema), async (c) => {
     const { items, amountPaid, customerId } = c.req.valid("json")
 
-    // Calculate total from items
     const total = items.reduce(
       (sum, item) => sum + Number(item.price) * item.quantity,
       0
     )
 
-    // Create invoice
+    const [result] = await db
+      .select({ maxId: sql<string | null>`MAX(CAST(SUBSTRING(${invoices.id} FROM '\\d+') AS INTEGER))` })
+      .from(invoices)
+
+    const nextSequenceNumber = result?.maxId ? Number(result.maxId) + 1 : 1
+    const invoiceId = generateInvoiceId(nextSequenceNumber)
+
     const [invoice] = await db
       .insert(invoices)
       .values({
+        id: invoiceId,
         customerId,
         total: total.toString(),
         amountPaid: amountPaid.toString()
       })
       .returning()
 
-    // Create invoice items
     await db.insert(invoiceItems).values(
       items.map((item) => ({
         invoiceId: invoice.id,
@@ -127,13 +131,11 @@ export const invoicesRouter = new Hono()
     const { id } = c.req.param()
     const { items, amountPaid, customerId } = c.req.valid("json")
 
-    // Calculate total from items
     const total = items.reduce(
       (sum, item) => sum + Number(item.price) * item.quantity,
       0
     )
 
-    // Update invoice
     await db
       .update(invoices)
       .set({
@@ -143,10 +145,12 @@ export const invoicesRouter = new Hono()
       })
       .where(and(eq(invoices.id, id), isNull(invoices.deletedAt)))
 
-    // Delete existing items
-    await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id))
+    await db
+      .delete(invoiceItems)
+      .where(
+        and(eq(invoiceItems.invoiceId, id), isNull(invoiceItems.deletedAt))
+      )
 
-    // Create new invoice items
     await db.insert(invoiceItems).values(
       items.map((item) => ({
         invoiceId: id,

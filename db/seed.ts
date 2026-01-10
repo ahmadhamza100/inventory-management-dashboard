@@ -2,7 +2,7 @@ import "dotenv/config"
 
 import { db } from "./index"
 import { customers, invoiceItems, invoices, products } from "./schema"
-import { generateSKU } from "@/utils/helpers"
+import { generateSKU, generateInvoiceId } from "@/utils/helpers"
 
 const productNames = [
   "Wireless Headphones",
@@ -73,14 +73,12 @@ function randomDateInMonth(year: number, month: number): Date {
 async function seed() {
   console.log("🌱 Starting seed...")
 
-  // Clear existing data
   console.log("🗑️  Clearing existing data...")
   await db.delete(invoiceItems)
   await db.delete(invoices)
   await db.delete(products)
   await db.delete(customers)
 
-  // Seed customers
   console.log("👥 Seeding customers...")
   const seededCustomers = await db
     .insert(customers)
@@ -96,7 +94,6 @@ async function seed() {
 
   console.log(`✅ Created ${seededCustomers.length} customers`)
 
-  // Seed products
   console.log("📦 Seeding products...")
   const seededProducts = await db
     .insert(products)
@@ -116,13 +113,11 @@ async function seed() {
 
   console.log(`✅ Created ${seededProducts.length} products`)
 
-  // Seed invoices with items spread across the last 12 months
   console.log("🧾 Preparing invoice data across the last 12 months...")
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
 
-  // Prepare all invoice data first using flatMap
   const invoiceData = Array.from({ length: 12 }, (_, monthOffset) => {
     const targetMonth = currentMonth - (11 - monthOffset)
     const year = targetMonth < 0 ? currentYear - 1 : currentYear
@@ -133,7 +128,6 @@ async function seed() {
       year: "numeric"
     })
 
-    // Random number of invoices per month (2-10)
     const invoicesPerMonth = randomInt(2, 10)
     console.log(
       `  📅 Preparing ${invoicesPerMonth} invoices for ${monthName}...`
@@ -143,7 +137,6 @@ async function seed() {
       const customer = seededCustomers[randomInt(0, seededCustomers.length - 1)]
       const itemCount = randomInt(1, 10)
 
-      // Select random products for this invoice
       const selectedProducts = Array.from({ length: itemCount }, () => {
         const product = seededProducts[randomInt(0, seededProducts.length - 1)]
         const quantity = randomInt(1, 5)
@@ -154,22 +147,19 @@ async function seed() {
         }
       })
 
-      // Calculate invoice total
       const total = selectedProducts.reduce(
         (sum, item) => sum + Number(item.price) * item.quantity,
         0
       )
 
-      // Randomly decide payment status: 40% fully paid, 40% partially paid, 20% unpaid
       const paymentStatus = Math.random()
       const amountPaid =
         paymentStatus < 0.4
-          ? total // Fully paid
+          ? total
           : paymentStatus < 0.8
-            ? randomFloat(total * 0.1, total * 0.9) // Partially paid
-            : randomFloat(0, total * 0.3) // Mostly unpaid
+            ? randomFloat(total * 0.1, total * 0.9)
+            : randomFloat(0, total * 0.3)
 
-      // Generate random date within the month
       const invoiceDate = randomDateInMonth(year, month)
 
       return {
@@ -191,7 +181,10 @@ async function seed() {
     })
   }).flat()
 
-  const invoicesToInsert = invoiceData.map((data) => data.invoice)
+  const invoicesToInsert = invoiceData.map((data, index) => ({
+    ...data.invoice,
+    id: generateInvoiceId(index + 1)
+  }))
 
   const invoiceItemsToInsert = invoiceData.flatMap((data, invoiceIndex) =>
     data.items.map((item) => ({
@@ -200,16 +193,14 @@ async function seed() {
     }))
   )
 
-  // Bulk insert all invoices
   console.log(`💾 Bulk inserting ${invoicesToInsert.length} invoices...`)
   const seededInvoices = await db
     .insert(invoices)
     .values(invoicesToInsert)
     .returning()
 
-  // Bulk insert all invoice items
   console.log(
-    `💾 Bulk inserting ${invoiceItemsToInsert.length} invoice items...`
+    `💾 Inserting ${invoiceItemsToInsert.length} invoice items...`
   )
   await db.insert(invoiceItems).values(
     invoiceItemsToInsert.map((item) => ({
