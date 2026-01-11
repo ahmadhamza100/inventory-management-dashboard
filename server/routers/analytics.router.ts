@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { db } from "@/db"
 import { and, isNull, sql, gte, lte, sum, count } from "drizzle-orm"
-import { invoices, customers, invoiceItems } from "@/db/schema"
+import { invoices, customers, invoiceItems, transactions } from "@/db/schema"
 
 export const analyticsRouter = new Hono()
   // Get dashboard cards data (monthly sales, today sales, total customers)
@@ -16,7 +16,25 @@ export const analyticsRouter = new Hono()
       0,
       0
     )
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
+    )
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    )
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
 
@@ -25,7 +43,9 @@ export const analyticsRouter = new Hono()
       monthlySalesResult,
       todaySalesResult,
       totalCustomersResult,
-      lastMonthSalesResult
+      lastMonthSalesResult,
+      dailyTransactionsResult,
+      monthlyTransactionsResult
     ] = await Promise.all([
       // Monthly sales (current month)
       db
@@ -56,6 +76,40 @@ export const analyticsRouter = new Hono()
             gte(invoices.createdAt, startOfLastMonth),
             lte(invoices.createdAt, endOfLastMonth)
           )
+        ),
+      // Daily transactions flow (today's net cash flow: cash_in - cash_out)
+      db
+        .select({
+          flow: sql<number>`COALESCE(
+            SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END) -
+            SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END),
+            0
+          )`.as("flow")
+        })
+        .from(transactions)
+        .where(
+          and(
+            isNull(transactions.deletedAt),
+            gte(transactions.date, startOfToday),
+            lte(transactions.date, endOfToday)
+          )
+        ),
+      // Monthly transactions flow (current month's net cash flow: cash_in - cash_out)
+      db
+        .select({
+          flow: sql<number>`COALESCE(
+            SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END) -
+            SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END),
+            0
+          )`.as("flow")
+        })
+        .from(transactions)
+        .where(
+          and(
+            isNull(transactions.deletedAt),
+            gte(transactions.date, startOfMonth),
+            lte(transactions.date, endOfMonth)
+          )
         )
     ])
 
@@ -63,6 +117,8 @@ export const analyticsRouter = new Hono()
     const todaySales = Number(todaySalesResult[0]?.total ?? 0)
     const totalCustomers = Number(totalCustomersResult[0]?.count ?? 0)
     const lastMonthSales = Number(lastMonthSalesResult[0]?.total ?? 0)
+    const dailyTransactionsFlow = Number(dailyTransactionsResult[0]?.flow ?? 0)
+    const monthlyTransactionsFlow = Number(monthlyTransactionsResult[0]?.flow ?? 0)
 
     const monthlyGrowth =
       lastMonthSales > 0
@@ -73,7 +129,9 @@ export const analyticsRouter = new Hono()
       monthlySales,
       todaySales,
       totalCustomers,
-      monthlyGrowth
+      monthlyGrowth,
+      dailyTransactionsFlow,
+      monthlyTransactionsFlow
     })
   })
 
