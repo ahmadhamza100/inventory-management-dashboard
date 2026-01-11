@@ -3,6 +3,7 @@ import { productsRouter } from "@api/routers/products.router"
 import { customersRouter } from "@api/routers/customers.router"
 import { invoicesRouter } from "@api/routers/invoices.router"
 import { analyticsRouter } from "@api/routers/analytics.router"
+import { transactionsRouter } from "@api/routers/transactions.router"
 import { superJsonMiddleware } from "@api/middlewares/super-json"
 import { authMiddleware } from "@api/middlewares/auth"
 import { HTTPException } from "hono/http-exception"
@@ -18,6 +19,7 @@ const routes = app
   .route("/customers", customersRouter)
   .route("/invoices", invoicesRouter)
   .route("/analytics", analyticsRouter)
+  .route("/transactions", transactionsRouter)
 
 app.onError((err, c) => {
   console.error("[API Error]", c.req.method, c.req.path, err)

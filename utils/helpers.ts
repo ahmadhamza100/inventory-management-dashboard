@@ -45,3 +45,11 @@ export function getPaymentStatus(
     return "unpaid"
   }
 }
+
+export function toSentenceCase(str: string) {
+  return str
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim()
+}

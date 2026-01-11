@@ -5,7 +5,8 @@ import {
   text,
   timestamp,
   uuid,
-  varchar
+  varchar,
+  pgEnum
 } from "drizzle-orm/pg-core"
 
 const timestamps = {
@@ -62,3 +63,16 @@ export const invoiceItems = pgTable("invoice_items", {
 })
 
 export type InvoiceItem = typeof invoiceItems.$inferSelect
+
+export const transactionTypeEnum = pgEnum("transaction_type_enum", ["cash_in", "cash_out"])
+
+export const transactions = pgTable("transactions", {
+  id: uuid().primaryKey().defaultRandom(),
+  type: transactionTypeEnum("type").notNull(),
+  amount: decimal({ precision: 10, scale: 2 }).notNull(),
+  date: timestamp().notNull(),
+  description: text(),
+  ...timestamps
+})
+
+export type Transaction = typeof transactions.$inferSelect

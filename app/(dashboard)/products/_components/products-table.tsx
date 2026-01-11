@@ -8,6 +8,7 @@ import { useProductsQuery } from "@/queries/use-products-query"
 import { formatPrice, formatDate } from "@/utils/helpers"
 import { parseAsString, parseAsStringEnum, useQueryStates } from "nuqs"
 import { productSortParser } from "@/utils/sorting-parsers"
+import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
 import type { Product } from "@/db/schema"
 import {
   IconSearch,
@@ -59,18 +60,21 @@ export function ProductsTable() {
   } = useProductsQuery()
 
   const openProductModal = useProductModalStore((state) => state.onOpen)
-  const [{ q, availability, sort }, setSearchParams] = useQueryStates({
-    q: parseAsString.withDefault(""),
-    availability: parseAsStringEnum([
-      "all",
-      "in_stock",
-      "out_of_stock"
-    ]).withDefault("all"),
-    sort: productSortParser.withDefault({
-      column: "createdAt",
-      direction: "descending"
+  const [{ q, availability, startDate, endDate, sort }, setSearchParams] =
+    useQueryStates({
+      q: parseAsString.withDefault(""),
+      availability: parseAsStringEnum([
+        "all",
+        "in_stock",
+        "out_of_stock"
+      ]).withDefault("all"),
+      startDate: parseAsString.withDefault(""),
+      endDate: parseAsString.withDefault(""),
+      sort: productSortParser.withDefault({
+        column: "createdAt",
+        direction: "descending"
+      })
     })
-  })
 
   const filteredItems = useMemo(() => {
     if (!products) return []
@@ -93,8 +97,25 @@ export function ProductsTable() {
       filtered = filter(filtered, (product) => product.stock === 0)
     }
 
+    if (startDate) {
+      const start = new Date(startDate)
+      filtered = filter(
+        filtered,
+        (product) => new Date(product.createdAt) >= start
+      )
+    }
+
+    if (endDate) {
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      filtered = filter(
+        filtered,
+        (product) => new Date(product.createdAt) <= end
+      )
+    }
+
     return filtered
-  }, [products, q, availability])
+  }, [products, q, availability, startDate, endDate])
 
   const sortedItems = useMemo(() => {
     const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
@@ -208,12 +229,18 @@ export function ProductsTable() {
 
   type Availability = NonNullable<typeof availability>
 
-  const hasActiveFilters = q.trim() !== "" || availability !== "all"
+  const hasActiveFilters =
+    q.trim() !== "" ||
+    availability !== "all" ||
+    startDate !== "" ||
+    endDate !== ""
 
   const handleClearFilters = useCallback(() => {
     setSearchParams({
       q: "",
       availability: "all",
+      startDate: "",
+      endDate: "",
       sort: {
         column: "createdAt",
         direction: "descending"
@@ -254,6 +281,8 @@ export function ProductsTable() {
             <SelectItem key="in_stock">In Stock</SelectItem>
             <SelectItem key="out_of_stock">Out of Stock</SelectItem>
           </Select>
+
+          <DateRangeFilter />
 
           {hasActiveFilters && (
             <Button

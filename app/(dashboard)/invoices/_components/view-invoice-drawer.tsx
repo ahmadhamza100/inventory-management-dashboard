@@ -14,7 +14,8 @@ import {
   Button,
   Divider,
   Chip,
-  Image
+  Image,
+  cn
 } from "@heroui/react"
 
 export function ViewInvoiceDrawer() {
@@ -199,9 +200,10 @@ export function ViewInvoiceDrawer() {
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Balance Due</p>
                   <p
-                    className={`text-sm font-bold tabular-nums ${
+                    className={cn(
+                      "text-sm font-bold tabular-nums",
                       isPaid ? "text-success" : "text-danger"
-                    }`}
+                    )}
                   >
                     {formatPrice(Math.abs(balanceDue))}
                   </p>

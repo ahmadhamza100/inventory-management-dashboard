@@ -11,6 +11,7 @@ import { formatDate, formatPrice, getPaymentStatus } from "@/utils/helpers"
 import { parseAsString, useQueryStates } from "nuqs"
 import { invoiceSortParser } from "@/utils/sorting-parsers"
 import { useDownloadInvoice } from "@/mutations/use-download-invoice"
+import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
 import type { InvoiceWithDetails } from "@/stores/use-invoice-modal-store"
 import {
   IconSearch,
@@ -67,17 +68,21 @@ export function InvoicesTable() {
   const { data: products } = useProductsQuery()
 
   const openInvoiceModal = useInvoiceModalStore((state) => state.onOpen)
-  const [{ q, sort, customer, product, paymentStatus }, setSearchParams] =
-    useQueryStates({
-      q: parseAsString.withDefault(""),
-      customer: parseAsString.withDefault(""),
-      product: parseAsString.withDefault(""),
-      paymentStatus: parseAsString.withDefault(""),
-      sort: invoiceSortParser.withDefault({
-        column: "createdAt",
-        direction: "descending"
-      })
+  const [
+    { q, sort, customer, product, paymentStatus, startDate, endDate },
+    setSearchParams
+  ] = useQueryStates({
+    q: parseAsString.withDefault(""),
+    customer: parseAsString.withDefault(""),
+    product: parseAsString.withDefault(""),
+    paymentStatus: parseAsString.withDefault(""),
+    startDate: parseAsString.withDefault(""),
+    endDate: parseAsString.withDefault(""),
+    sort: invoiceSortParser.withDefault({
+      column: "createdAt",
+      direction: "descending"
     })
+  })
 
   const [customerSearchValue, setCustomerSearchValue] = useState("")
   const [productSearchValue, setProductSearchValue] = useState("")
@@ -149,8 +154,25 @@ export function InvoicesTable() {
       })
     }
 
+    if (startDate) {
+      const start = new Date(startDate)
+      filtered = filter(
+        filtered,
+        (invoice) => new Date(invoice.createdAt) >= start
+      )
+    }
+
+    if (endDate) {
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      filtered = filter(
+        filtered,
+        (invoice) => new Date(invoice.createdAt) <= end
+      )
+    }
+
     return filtered
-  }, [invoices, q, customer, product, paymentStatus, products])
+  }, [invoices, q, customer, product, paymentStatus, products, startDate, endDate])
 
   const sortedItems = useMemo(() => {
     const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
@@ -291,7 +313,12 @@ export function InvoicesTable() {
   const filteredCount = filteredItems.length
 
   const hasActiveFilters =
-    q.trim() !== "" || customer !== "" || product !== "" || paymentStatus !== ""
+    q.trim() !== "" ||
+    customer !== "" ||
+    product !== "" ||
+    paymentStatus !== "" ||
+    startDate !== "" ||
+    endDate !== ""
 
   const handleClearFilters = useCallback(() => {
     setSearchParams({
@@ -299,6 +326,8 @@ export function InvoicesTable() {
       customer: "",
       product: "",
       paymentStatus: "",
+      startDate: "",
+      endDate: "",
       sort: {
         column: "createdAt",
         direction: "descending"
@@ -451,6 +480,8 @@ export function InvoicesTable() {
               <SelectItem key="partially_paid">Partially Paid</SelectItem>
               <SelectItem key="unpaid">Unpaid</SelectItem>
             </Select>
+
+            <DateRangeFilter />
 
             {hasActiveFilters && (
               <Button

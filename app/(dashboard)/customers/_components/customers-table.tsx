@@ -8,6 +8,7 @@ import { useCustomersQuery } from "@/queries/use-customers-query"
 import { formatDate } from "@/utils/helpers"
 import { parseAsString, useQueryStates } from "nuqs"
 import { customerSortParser } from "@/utils/sorting-parsers"
+import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
 import type { Customer } from "@/db/schema"
 import {
   IconSearch,
@@ -56,8 +57,10 @@ export function CustomersTable() {
   } = useCustomersQuery()
 
   const openCustomerModal = useCustomerModalStore((state) => state.onOpen)
-  const [{ q, sort }, setSearchParams] = useQueryStates({
+  const [{ q, startDate, endDate, sort }, setSearchParams] = useQueryStates({
     q: parseAsString.withDefault(""),
+    startDate: parseAsString.withDefault(""),
+    endDate: parseAsString.withDefault(""),
     sort: customerSortParser.withDefault({
       column: "createdAt",
       direction: "descending"
@@ -81,8 +84,25 @@ export function CustomersTable() {
       })
     }
 
+    if (startDate) {
+      const start = new Date(startDate)
+      filtered = filter(
+        filtered,
+        (customer) => new Date(customer.createdAt) >= start
+      )
+    }
+
+    if (endDate) {
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      filtered = filter(
+        filtered,
+        (customer) => new Date(customer.createdAt) <= end
+      )
+    }
+
     return filtered
-  }, [customers, q])
+  }, [customers, q, startDate, endDate])
 
   const sortedItems = useMemo(() => {
     const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
@@ -162,11 +182,13 @@ export function CustomersTable() {
   const totalCount = customers?.length ?? 0
   const filteredCount = filteredItems.length
 
-  const hasActiveFilters = q.trim() !== ""
+  const hasActiveFilters = q.trim() !== "" || startDate !== "" || endDate !== ""
 
   const handleClearFilters = useCallback(() => {
     setSearchParams({
       q: "",
+      startDate: "",
+      endDate: "",
       sort: {
         column: "createdAt",
         direction: "descending"
@@ -194,6 +216,8 @@ export function CustomersTable() {
             onClear={() => setSearchParams({ q: "" })}
             onValueChange={(value) => setSearchParams({ q: value })}
           />
+
+          <DateRangeFilter />
 
           {hasActiveFilters && (
             <Button

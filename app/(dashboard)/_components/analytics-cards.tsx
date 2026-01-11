@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardBody, Skeleton } from "@heroui/react"
+import { Card, CardBody, cn, Skeleton } from "@heroui/react"
 import { useAnalyticsCardsQuery } from "@/queries/use-analytics-cards-query"
 import { formatPrice } from "@/utils/helpers"
 import {
@@ -90,7 +90,10 @@ export function AnalyticsCards() {
                   {card.title}
                 </p>
                 <div
-                  className={`flex size-10 items-center justify-center rounded-lg ${card.bgColor}`}
+                  className={cn(
+                    "flex size-10 items-center justify-center rounded-lg",
+                    card.bgColor
+                  )}
                 >
                   <Icon size={20} className={card.iconColor} />
                 </div>
@@ -101,9 +104,10 @@ export function AnalyticsCards() {
                 </p>
                 {card.trend !== undefined && (
                   <div
-                    className={`flex items-center gap-1 text-xs font-medium ${
+                    className={cn(
+                      "flex items-center gap-1 text-xs font-medium",
                       isPositive ? "text-success" : "text-danger"
-                    }`}
+                    )}
                   >
                     {isPositive ? (
                       <IconTrendingUp size={14} />

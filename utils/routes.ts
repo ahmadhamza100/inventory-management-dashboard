@@ -6,6 +6,7 @@ export const ROUTES = {
   products: "/products",
   customers: "/customers",
   invoices: "/invoices",
+  transactions: "/transactions",
   settings: "/settings"
 } as const
 
@@ -16,6 +17,7 @@ export const PROTECTED_ROUTES = [
   ROUTES.products,
   ROUTES.customers,
   ROUTES.invoices,
+  ROUTES.transactions,
   ROUTES.settings
 ] as const
 
