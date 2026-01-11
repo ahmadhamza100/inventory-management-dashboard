@@ -5,6 +5,7 @@ import { cn } from "@heroui/react"
 import { useSidebar } from "./context"
 import { SidebarItem } from "./sidebar-item"
 import { SIDEBAR_ITEMS } from "./items"
+import { LogoutButton } from "./logout-button"
 
 export function Sidebar() {
   const { isOpen } = useSidebar()
@@ -32,6 +33,11 @@ export function Sidebar() {
           <SidebarItem key={item.href} {...item} />
         ))}
       </nav>
+
+      {/* Logout Button */}
+      <div className="border-t border-divider/50 p-3">
+        <LogoutButton showLabel={isOpen} />
+      </div>
     </aside>
   )
 }

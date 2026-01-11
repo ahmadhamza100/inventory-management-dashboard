@@ -1,16 +1,16 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { Link } from "@/components/link"
 import { Logo } from "@/components/logo"
 import { SIDEBAR_ITEMS } from "./items"
+import { NavItemButton } from "./nav-item-button"
+import { LogoutButton } from "./logout-button"
 import {
-  Button,
-  cn,
   Drawer,
   DrawerContent,
   DrawerHeader,
-  DrawerBody
+  DrawerBody,
+  Divider
 } from "@heroui/react"
 
 type MobileSidebarProps = {
@@ -35,31 +35,26 @@ export function MobileSidebar({ isOpen, onOpenChange }: MobileSidebarProps) {
             <DrawerHeader className="border-b border-divider/50">
               <Logo showText />
             </DrawerHeader>
-            <DrawerBody className="p-3">
-              <nav className="space-y-1">
+            <DrawerBody className="flex flex-col p-3">
+              <nav className="flex-1 space-y-1">
                 {SIDEBAR_ITEMS.map((item) => {
                   const isActive = pathname === item.href
                   return (
-                    <Button
+                    <NavItemButton
                       key={item.href}
-                      as={Link}
+                      {...item}
+                      isActive={isActive}
+                      showLabel={true}
                       onPress={onClose}
-                      href={item.href}
-                      variant={isActive ? "flat" : "light"}
-                      color={isActive ? "primary" : "default"}
-                      className="w-full justify-start gap-3"
-                      startContent={
-                        <item.icon
-                          size={20}
-                          className={cn(isActive && "text-primary")}
-                        />
-                      }
-                    >
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </Button>
+                    />
                   )
                 })}
               </nav>
+              <Divider className="my-2" />
+              <LogoutButton
+                showLabel={true}
+                onPress={() => onOpenChange(false)}
+              />
             </DrawerBody>
           </>
         )}

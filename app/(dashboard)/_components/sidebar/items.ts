@@ -3,6 +3,7 @@ import {
   IconFileInvoice,
   IconLayoutDashboard,
   IconPackage,
+  IconSettings2,
   IconUsers
 } from "@tabler/icons-react"
 
@@ -26,6 +27,11 @@ export const SIDEBAR_ITEMS = [
     href: ROUTES.invoices,
     icon: IconFileInvoice,
     label: "Invoices"
+  },
+  {
+    href: ROUTES.settings,
+    icon: IconSettings2,
+    label: "Settings"
   }
 ]
 

@@ -19,14 +19,14 @@ export default function NewPasswordPage() {
   const form = useForm({
     resolver: zodResolver(newPasswordSchema),
     defaultValues: {
-      password: "",
+      newPassword: "",
       confirmPassword: ""
     }
   })
 
   const onSubmit = form.handleSubmit(async (data) => {
     const { error } = await supabase.auth.updateUser({
-      password: data.password
+      password: data.newPassword
     })
 
     if (error) {
@@ -54,7 +54,7 @@ export default function NewPasswordPage() {
 
         <Controller
           control={form.control}
-          name="password"
+          name="newPassword"
           render={({ field, fieldState }) => (
             <PasswordInput
               {...field}

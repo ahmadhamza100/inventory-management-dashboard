@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { UserMenu } from "./user-menu"
 import { ThemeToggle } from "./theme-toggle"
 import { MobileSidebar } from "./sidebar/mobile-sidebar"
 import { SidebarTrigger } from "./sidebar/sidebar-trigger"
@@ -22,7 +21,6 @@ export function Header() {
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <UserMenu />
         </div>
       </header>
 

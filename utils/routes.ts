@@ -5,7 +5,8 @@ export const ROUTES = {
   dashboard: "/",
   products: "/products",
   customers: "/customers",
-  invoices: "/invoices"
+  invoices: "/invoices",
+  settings: "/settings"
 } as const
 
 export const PUBLIC_ROUTES = [ROUTES.login, ROUTES.resetPassword] as const
@@ -14,7 +15,8 @@ export const PROTECTED_ROUTES = [
   ROUTES.dashboard,
   ROUTES.products,
   ROUTES.customers,
-  ROUTES.invoices
+  ROUTES.invoices,
+  ROUTES.settings
 ] as const
 
 export function isPublicRoute(pathname: string) {
