@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, eq, inArray, isNull, desc, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, desc, sql, type SQL } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { invoiceSchema } from "@/validations/invoice"
 import { invoices, invoiceItems, customers, products } from "@/db/schema"
@@ -99,7 +99,11 @@ export const invoicesRouter = new Hono()
     )
 
     const [result] = await db
-      .select({ maxId: sql<string | null>`MAX(CAST(SUBSTRING(${invoices.id} FROM '\\d+') AS INTEGER))` })
+      .select({
+        maxId: sql<
+          string | null
+        >`MAX(CAST(SUBSTRING(${invoices.id} FROM '\\d+') AS INTEGER))`
+      })
       .from(invoices)
 
     const nextSequenceNumber = result?.maxId ? Number(result.maxId) + 1 : 1
@@ -124,6 +128,26 @@ export const invoicesRouter = new Hono()
       }))
     )
 
+    if (items.length > 0) {
+      const sqlChunks: SQL[] = [sql`(case`]
+      const productIds: string[] = []
+
+      for (const item of items) {
+        sqlChunks.push(
+          sql`when ${products.id} = ${item.productId} then ${products.stock} - ${item.quantity}`
+        )
+        productIds.push(item.productId)
+      }
+
+      sqlChunks.push(sql`end)`)
+      const finalSql = sql.join(sqlChunks, sql.raw(" "))
+
+      await db
+        .update(products)
+        .set({ stock: finalSql })
+        .where(inArray(products.id, productIds))
+    }
+
     return c.json(null, 201)
   })
 
@@ -135,6 +159,42 @@ export const invoicesRouter = new Hono()
       (sum, item) => sum + Number(item.price) * item.quantity,
       0
     )
+
+    const oldItems = await db
+      .select({
+        productId: invoiceItems.productId,
+        quantity: invoiceItems.quantity
+      })
+      .from(invoiceItems)
+      .where(
+        and(eq(invoiceItems.invoiceId, id), isNull(invoiceItems.deletedAt))
+      )
+
+    const validOldItems = oldItems.filter((item) => item.productId)
+
+    if (validOldItems.length > 0) {
+      const sqlChunks: SQL[] = [sql`(case`]
+      const productIds: string[] = []
+
+      for (const oldItem of validOldItems) {
+        if (oldItem.productId) {
+          sqlChunks.push(
+            sql`when ${products.id} = ${oldItem.productId} then ${products.stock} + ${oldItem.quantity}`
+          )
+          productIds.push(oldItem.productId)
+        }
+      }
+
+      sqlChunks.push(sql`end)`)
+      const finalSql = sql.join(sqlChunks, sql.raw(" "))
+
+      await db
+        .update(products)
+        .set({
+          stock: finalSql
+        })
+        .where(inArray(products.id, productIds))
+    }
 
     await db
       .update(invoices)
@@ -159,6 +219,28 @@ export const invoicesRouter = new Hono()
         price: item.price.toString()
       }))
     )
+
+    if (items.length > 0) {
+      const sqlChunks: SQL[] = [sql`(case`]
+      const productIds: string[] = []
+
+      for (const item of items) {
+        sqlChunks.push(
+          sql`when ${products.id} = ${item.productId} then ${products.stock} - ${item.quantity}`
+        )
+        productIds.push(item.productId)
+      }
+
+      sqlChunks.push(sql`end)`)
+      const finalSql = sql.join(sqlChunks, sql.raw(" "))
+
+      await db
+        .update(products)
+        .set({
+          stock: finalSql
+        })
+        .where(inArray(products.id, productIds))
+    }
 
     return c.json(null, 200)
   })

@@ -14,7 +14,7 @@ export const invoiceItemSchema = z.object({
 })
 
 export const invoiceSchema = z.object({
-  customerId: z.uuid("Customer is required"),
+  customerId: z.uuid("Please select a customer"),
   items: z.array(invoiceItemSchema).min(1, "Please add at least one product"),
   amountPaid: z
     .number("Amount paid is required")

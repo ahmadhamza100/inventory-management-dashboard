@@ -80,15 +80,32 @@ async function seed() {
   await db.delete(customers)
 
   console.log("👥 Seeding customers...")
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
+
   const seededCustomers = await db
     .insert(customers)
     .values(
-      customerNames.map((name, index) => ({
-        name,
-        email: customerEmails[index],
-        phone: `+1-${randomInt(200, 999)}-${randomInt(100, 999)}-${randomInt(1000, 9999)}`,
-        address: `${randomInt(100, 9999)} Main St, City, State ${randomInt(10000, 99999)}`
-      }))
+      customerNames.map((name, index) => {
+        const monthsAgo = randomInt(1, 12)
+        const targetMonth = currentMonth - monthsAgo
+        const year = targetMonth < 0 ? currentYear - 1 : currentYear
+        const month = targetMonth < 0 ? 12 + targetMonth : targetMonth
+        const createdAt = randomDateInMonth(year, month)
+        const updatedAt = new Date(
+          createdAt.getTime() + randomInt(0, 30) * 24 * 60 * 60 * 1000
+        )
+
+        return {
+          name,
+          email: customerEmails[index],
+          phone: `+1-${randomInt(200, 999)}-${randomInt(100, 999)}-${randomInt(1000, 9999)}`,
+          address: `${randomInt(100, 9999)} Main St, City, State ${randomInt(10000, 99999)}`,
+          createdAt,
+          updatedAt
+        }
+      })
     )
     .returning()
 
@@ -98,25 +115,35 @@ async function seed() {
   const seededProducts = await db
     .insert(products)
     .values(
-      productNames.map((name) => ({
-        name,
-        price: randomFloat(10, 500).toString(),
-        stock: randomInt(0, 200),
-        sku: generateSKU(),
-        image:
-          Math.random() > 0.3
-            ? `https://picsum.photos/400/400?random=${Math.random()}`
-            : null
-      }))
+      productNames.map((name) => {
+        const monthsAgo = randomInt(1, 12)
+        const targetMonth = currentMonth - monthsAgo
+        const year = targetMonth < 0 ? currentYear - 1 : currentYear
+        const month = targetMonth < 0 ? 12 + targetMonth : targetMonth
+        const createdAt = randomDateInMonth(year, month)
+        const updatedAt = new Date(
+          createdAt.getTime() + randomInt(0, 30) * 24 * 60 * 60 * 1000
+        )
+
+        return {
+          name,
+          price: randomFloat(10, 500).toString(),
+          stock: randomInt(0, 200),
+          sku: generateSKU(),
+          image:
+            Math.random() > 0.3
+              ? `https://picsum.photos/400/400?random=${Math.random()}`
+              : null,
+          createdAt,
+          updatedAt
+        }
+      })
     )
     .returning()
 
   console.log(`✅ Created ${seededProducts.length} products`)
 
   console.log("🧾 Preparing invoice data across the last 12 months...")
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth()
 
   const invoiceData = Array.from({ length: 12 }, (_, monthOffset) => {
     const targetMonth = currentMonth - (11 - monthOffset)
@@ -199,9 +226,7 @@ async function seed() {
     .values(invoicesToInsert)
     .returning()
 
-  console.log(
-    `💾 Inserting ${invoiceItemsToInsert.length} invoice items...`
-  )
+  console.log(`💾 Inserting ${invoiceItemsToInsert.length} invoice items...`)
   await db.insert(invoiceItems).values(
     invoiceItemsToInsert.map((item) => ({
       invoiceId: seededInvoices[item.invoiceIndex].id,

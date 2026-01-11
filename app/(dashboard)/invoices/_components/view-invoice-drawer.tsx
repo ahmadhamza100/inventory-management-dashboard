@@ -4,6 +4,7 @@ import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store"
 import { formatDate, formatPrice } from "@/utils/helpers"
 import { IconDownload, IconX, IconPhoto } from "@tabler/icons-react"
 import { CopyButton } from "@/components/copy-button"
+import { useDownloadInvoice } from "@/mutations/use-download-invoice"
 import {
   Drawer,
   DrawerContent,
@@ -22,6 +23,7 @@ export function ViewInvoiceDrawer() {
   const isOpen = useInvoiceModalStore(
     (state) => state.isOpen && state.type === "view"
   )
+  const { downloadInvoice, isDownloading } = useDownloadInvoice()
 
   if (!invoice) return null
 
@@ -76,10 +78,9 @@ export function ViewInvoiceDrawer() {
                 color="primary"
                 variant="flat"
                 startContent={<IconDownload size={18} />}
-                onPress={() => {
-                  // TODO: Implement download functionality
-                  console.log("Download invoice", invoice.id)
-                }}
+                isLoading={isDownloading}
+                isDisabled={isDownloading}
+                onPress={() => downloadInvoice(invoice)}
               >
                 Download Invoice
               </Button>
@@ -163,7 +164,9 @@ export function ViewInvoiceDrawer() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold tabular-nums">
-                          {formatPrice(Number(product.price) * product.quantity)}
+                          {formatPrice(
+                            Number(product.price) * product.quantity
+                          )}
                         </p>
                       </div>
                     </div>

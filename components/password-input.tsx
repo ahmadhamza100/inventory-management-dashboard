@@ -18,7 +18,6 @@ export function PasswordInput(props: Omit<InputProps, "type" | "endContent">) {
     const cursorPosition = input.selectionStart
     setIsVisible(!isVisible)
 
-
     requestAnimationFrame(() => {
       input.focus()
       if (cursorPosition !== null) {

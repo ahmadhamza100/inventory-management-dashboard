@@ -16,7 +16,6 @@ export function ThemeToggle() {
         variant="light"
         size="sm"
         onPress={() => setTheme(isDark ? "light" : "dark")}
-        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         <IconSunFilled className="size-4 dark:hidden" />
         <IconMoonFilled className="hidden size-4 dark:block" />

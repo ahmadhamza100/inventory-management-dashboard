@@ -10,6 +10,7 @@ import { useProductsQuery } from "@/queries/use-products-query"
 import { formatDate, formatPrice, getPaymentStatus } from "@/utils/helpers"
 import { parseAsString, useQueryStates } from "nuqs"
 import { invoiceSortParser } from "@/utils/sorting-parsers"
+import { useDownloadInvoice } from "@/mutations/use-download-invoice"
 import type { InvoiceWithDetails } from "@/stores/use-invoice-modal-store"
 import {
   IconSearch,
@@ -153,8 +154,10 @@ export function InvoicesTable() {
 
   const sortedItems = useMemo(() => {
     const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
-    return orderBy(filteredItems, [sort.column], [lodashDirection])
+    return orderBy(filteredItems, [sort.column], lodashDirection)
   }, [filteredItems, sort])
+
+  const { downloadInvoice } = useDownloadInvoice()
 
   const renderCell = useCallback(
     (invoice: InvoiceWithDetails, columnKey: React.Key) => {
@@ -261,9 +264,7 @@ export function InvoicesTable() {
                 <DropdownItem
                   key="download"
                   startContent={<IconDownload size={16} />}
-                  onPress={() => {
-                    console.log("Download invoice", invoice.id)
-                  }}
+                  onPress={() => downloadInvoice(invoice)}
                 >
                   Download
                 </DropdownItem>
@@ -283,7 +284,7 @@ export function InvoicesTable() {
           return null
       }
     },
-    [openInvoiceModal]
+    [openInvoiceModal, downloadInvoice]
   )
 
   const totalCount = invoices?.length ?? 0
@@ -318,7 +319,7 @@ export function InvoicesTable() {
           </p>
         </div>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-center gap-4 overflow-x-auto [&>svg]:shrink-0 sm:flex-row">
+          <div className="flex flex-col items-center gap-4 overflow-x-auto sm:flex-row [&>svg]:shrink-0">
             <Input
               isClearable
               className="w-full sm:max-w-xs"
@@ -332,7 +333,7 @@ export function InvoicesTable() {
             />
 
             <Autocomplete
-              className="md:max-w-[14rem] w-full"
+              className="w-full md:max-w-[14rem]"
               placeholder="Filter by customer"
               defaultItems={customers || []}
               selectedKey={customer || null}
@@ -351,7 +352,9 @@ export function InvoicesTable() {
               onInputChange={(value) => {
                 setCustomerSearchValue(value)
                 if (customer) {
-                  const selectedCustomer = customers?.find((c) => c.id === customer)
+                  const selectedCustomer = customers?.find(
+                    (c) => c.id === customer
+                  )
                   if (value !== selectedCustomer?.name) {
                     setSearchParams({ customer: "" })
                   }
@@ -380,7 +383,7 @@ export function InvoicesTable() {
             </Autocomplete>
 
             <Autocomplete
-              className="md:max-w-[14rem] w-full"
+              className="w-full md:max-w-[14rem]"
               placeholder="Filter by product"
               defaultItems={products || []}
               selectedKey={product || null}
@@ -399,7 +402,9 @@ export function InvoicesTable() {
               onInputChange={(value) => {
                 setProductSearchValue(value)
                 if (product) {
-                  const selectedProduct = products?.find((p) => p.id === product)
+                  const selectedProduct = products?.find(
+                    (p) => p.id === product
+                  )
                   if (value !== selectedProduct?.name) {
                     setSearchParams({ product: "" })
                   }
@@ -426,7 +431,7 @@ export function InvoicesTable() {
             </Autocomplete>
 
             <Select
-              className="md:max-w-auto md:w-auto w-full"
+              className="md:max-w-auto w-full md:w-auto"
               fullWidth={false}
               placeholder="Payment status"
               selectedKeys={paymentStatus ? [paymentStatus] : []}
