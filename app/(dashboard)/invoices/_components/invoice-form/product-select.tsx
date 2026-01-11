@@ -64,7 +64,11 @@ export function ProductSelect() {
           placeholder="Select product to add"
           defaultItems={availableProducts}
           selectedKey={null}
-          onSelectionChange={(key) => handleAddProduct(String(key))}
+          onSelectionChange={(key) => {
+            if (key) {
+              handleAddProduct(String(key))
+            }
+          }}
           inputValue={productSearchValue}
           onInputChange={setProductSearchValue}
           allowsCustomValue={false}
@@ -84,7 +88,10 @@ export function ProductSelect() {
           }
         >
           {(product) => (
-            <AutocompleteItem key={product.id} textValue={product.name}>
+            <AutocompleteItem
+              key={product.id}
+              textValue={`${product.name} ${product.sku}`}
+            >
               <div className="flex w-full items-center gap-3">
                 {product.image ? (
                   <Image
@@ -103,7 +110,8 @@ export function ProductSelect() {
                 <div className="flex flex-1 flex-col">
                   <span className="text-small">{product.name}</span>
                   <span className="text-tiny text-default-400">
-                    {formatPrice(product.price)} • Stock: {product.stock}
+                    {formatPrice(product.price)} • Stock: {product.stock} • SKU:{" "}
+                    {product.sku}
                   </span>
                 </div>
               </div>

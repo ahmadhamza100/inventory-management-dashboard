@@ -53,6 +53,7 @@ export function InvoiceSummary() {
               isDisabled={isDisabled}
               labelPlacement="outside"
               formatOptions={FORMAT_CURRENCY_OPTS}
+              classNames={{ inputWrapper: "shadow-none" }}
             />
           )}
         />

@@ -97,22 +97,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
               <NumberInput
                 label="Quantity"
                 value={field.value}
-                onValueChange={(value) => {
-                  const numValue = Number(value)
-                  if (numValue > maxQuantity) {
-                    form.setError(
-                      `items.${index}.quantity` as `items.${number}.quantity`,
-                      {
-                        message: `Quantity cannot exceed available stock (${maxQuantity})`
-                      }
-                    )
-                  } else {
-                    form.clearErrors(
-                      `items.${index}.quantity` as `items.${number}.quantity`
-                    )
-                    field.onChange(numValue)
-                  }
-                }}
+                onValueChange={field.onChange}
                 minValue={1}
                 maxValue={maxQuantity}
                 step={1}
@@ -120,6 +105,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
                 errorMessage={fieldState.error?.message}
                 isDisabled={isDisabled}
                 labelPlacement="outside"
+                classNames={{ inputWrapper: "shadow-none" }}
               />
             )}
           />
@@ -138,6 +124,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
                 errorMessage={fieldState.error?.message}
                 isDisabled={isDisabled}
                 labelPlacement="outside"
+                classNames={{ inputWrapper: "shadow-none" }}
                 formatOptions={FORMAT_CURRENCY_OPTS}
               />
             )}
