@@ -1,5 +1,9 @@
-import { env } from "@/env.config"
+import dotenv from "dotenv"
 import { defineConfig } from "drizzle-kit"
+
+dotenv.config({
+  path: `.env.${process.env.NODE_ENV}`
+})
 
 export default defineConfig({
   schema: "./db/schema.ts",
@@ -8,6 +12,6 @@ export default defineConfig({
   verbose: true,
   strict: true,
   dbCredentials: {
-    url: env.DATABASE_URL
+    url: process.env.DATABASE_URL!
   }
 })
