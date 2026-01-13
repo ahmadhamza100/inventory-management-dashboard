@@ -8,6 +8,6 @@ export default {
     "./providers/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}"
   ],
-  darkMode: ["class"],
+  darkMode: "class",
   plugins: [heroui()]
 } satisfies Config
