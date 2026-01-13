@@ -64,7 +64,10 @@ export const invoiceItems = pgTable("invoice_items", {
 
 export type InvoiceItem = typeof invoiceItems.$inferSelect
 
-export const transactionTypeEnum = pgEnum("transaction_type_enum", ["cash_in", "cash_out"])
+export const transactionTypeEnum = pgEnum("transaction_type_enum", [
+  "cash_in",
+  "cash_out"
+])
 
 export const transactions = pgTable("transactions", {
   id: uuid().primaryKey().defaultRandom(),

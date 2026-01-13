@@ -172,7 +172,16 @@ export function InvoicesTable() {
     }
 
     return filtered
-  }, [invoices, q, customer, product, paymentStatus, products, startDate, endDate])
+  }, [
+    invoices,
+    q,
+    customer,
+    product,
+    paymentStatus,
+    products,
+    startDate,
+    endDate
+  ])
 
   const sortedItems = useMemo(() => {
     const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"

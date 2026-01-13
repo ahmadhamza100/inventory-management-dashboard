@@ -11,10 +11,13 @@ interface TransactionModalStore {
   onClose: () => void
 }
 
-export const useTransactionModalStore = create<TransactionModalStore>((set) => ({
-  type: null,
-  transaction: undefined,
-  isOpen: false,
-  onOpen: (type, transaction) => set({ type, transaction: transaction, isOpen: true }),
-  onClose: () => set({ type: null, isOpen: false, transaction: undefined })
-}))
+export const useTransactionModalStore = create<TransactionModalStore>(
+  (set) => ({
+    type: null,
+    transaction: undefined,
+    isOpen: false,
+    onOpen: (type, transaction) =>
+      set({ type, transaction: transaction, isOpen: true }),
+    onClose: () => set({ type: null, isOpen: false, transaction: undefined })
+  })
+)

@@ -130,12 +130,8 @@
           "name": "invoice_items_invoiceId_invoices_id_fk",
           "tableFrom": "invoice_items",
           "tableTo": "invoices",
-          "columnsFrom": [
-            "invoiceId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invoiceId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -143,12 +139,8 @@
           "name": "invoice_items_productId_products_id_fk",
           "tableFrom": "invoice_items",
           "tableTo": "products",
-          "columnsFrom": [
-            "productId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["productId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -214,12 +206,8 @@
           "name": "invoices_customerId_customers_id_fk",
           "tableFrom": "invoices",
           "tableTo": "customers",
-          "columnsFrom": [
-            "customerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -370,10 +358,7 @@
     "public.transaction_type_enum": {
       "name": "transaction_type_enum",
       "schema": "public",
-      "values": [
-        "cash_in",
-        "cash_out"
-      ]
+      "values": ["cash_in", "cash_out"]
     }
   },
   "schemas": {},

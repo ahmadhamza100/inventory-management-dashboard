@@ -68,7 +68,8 @@ export function AnalyticsCards() {
       icon: IconTransactionDollar,
       bgColor: dailyTransactionsFlow >= 0 ? "bg-success/10" : "bg-danger/10",
       iconColor: dailyTransactionsFlow >= 0 ? "text-success" : "text-danger",
-      format: (val: number) => `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
+      format: (val: number) =>
+        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
     },
     {
       title: "Monthly Transactions Flow",
@@ -76,7 +77,8 @@ export function AnalyticsCards() {
       icon: IconTransactionDollar,
       bgColor: monthlyTransactionsFlow >= 0 ? "bg-success/10" : "bg-danger/10",
       iconColor: monthlyTransactionsFlow >= 0 ? "text-success" : "text-danger",
-      format: (val: number) => `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
+      format: (val: number) =>
+        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
     }
   ]
 

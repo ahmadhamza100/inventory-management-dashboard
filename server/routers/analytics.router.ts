@@ -118,7 +118,9 @@ export const analyticsRouter = new Hono()
     const totalCustomers = Number(totalCustomersResult[0]?.count ?? 0)
     const lastMonthSales = Number(lastMonthSalesResult[0]?.total ?? 0)
     const dailyTransactionsFlow = Number(dailyTransactionsResult[0]?.flow ?? 0)
-    const monthlyTransactionsFlow = Number(monthlyTransactionsResult[0]?.flow ?? 0)
+    const monthlyTransactionsFlow = Number(
+      monthlyTransactionsResult[0]?.flow ?? 0
+    )
 
     const monthlyGrowth =
       lastMonthSales > 0
