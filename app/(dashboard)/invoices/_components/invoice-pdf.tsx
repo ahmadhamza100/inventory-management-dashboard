@@ -6,8 +6,7 @@ import {
   Text,
   View,
   StyleSheet,
-  Svg,
-  Path
+  Image
 } from "@react-pdf/renderer"
 
 const styles = StyleSheet.create({
@@ -22,11 +21,11 @@ const styles = StyleSheet.create({
     borderBottom: "1px solid #e5e7eb",
     paddingBottom: 20
   },
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 20
+  logo: {
+    width: 118,
+    height: 40,
+    borderRadius: 8,
+    objectFit: "contain"
   },
   logoText: {
     fontSize: 16,
@@ -194,23 +193,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="white"
-              stroke="#2563eb"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <Path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <Path d="M12 3a9 9 0 1 1 0 18a9 9 0 0 1 0 -18" />
-              <Path d="M6 12a6 6 0 0 1 6 -6" />
-            </Svg>
-            <Text style={styles.logoText}>Dashboard</Text>
-          </View>
+          <Image src="/logo.jpeg" style={styles.logo} />
           <Text style={styles.invoiceTitle}>Invoice</Text>
           <Text style={styles.invoiceNumber}>#{invoice.id}</Text>
         </View>

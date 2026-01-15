@@ -11,7 +11,7 @@ export function useDownloadInvoice() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `invoice-${invoice.id}.pdf`
+      link.download = `${invoice.id}.pdf`
       document.body.appendChild(link)
       link.click()
 

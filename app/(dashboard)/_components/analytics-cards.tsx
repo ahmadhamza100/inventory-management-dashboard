@@ -23,10 +23,14 @@ export function AnalyticsCards() {
     iconColor: string
     trend?: number
     format: (val: number) => string
+    subInfo?: {
+      in: number
+      out: number
+    }
   }
 
-  const dailyTransactionsFlow = data?.dailyTransactionsFlow ?? 0
-  const monthlyTransactionsFlow = data?.monthlyTransactionsFlow ?? 0
+  const dailyTransactions = data?.dailyTransactionsFlow
+  const monthlyTransactions = data?.monthlyTransactionsFlow
 
   const cards: CardConfig[] = [
     {
@@ -64,21 +68,33 @@ export function AnalyticsCards() {
     },
     {
       title: "Daily Transactions Flow",
-      value: dailyTransactionsFlow,
+      value: dailyTransactions?.flow ?? 0,
       icon: IconTransactionDollar,
-      bgColor: dailyTransactionsFlow >= 0 ? "bg-success/10" : "bg-danger/10",
-      iconColor: dailyTransactionsFlow >= 0 ? "text-success" : "text-danger",
+      bgColor:
+        (dailyTransactions?.flow ?? 0) >= 0 ? "bg-success/10" : "bg-danger/10",
+      iconColor:
+        (dailyTransactions?.flow ?? 0) >= 0 ? "text-success" : "text-danger",
       format: (val: number) =>
-        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
+        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`,
+      subInfo: {
+        in: dailyTransactions?.in ?? 0,
+        out: dailyTransactions?.out ?? 0
+      }
     },
     {
       title: "Monthly Transactions Flow",
-      value: monthlyTransactionsFlow,
+      value: monthlyTransactions?.flow ?? 0,
       icon: IconTransactionDollar,
-      bgColor: monthlyTransactionsFlow >= 0 ? "bg-success/10" : "bg-danger/10",
-      iconColor: monthlyTransactionsFlow >= 0 ? "text-success" : "text-danger",
+      bgColor:
+        (monthlyTransactions?.flow ?? 0) >= 0 ? "bg-success/10" : "bg-danger/10",
+      iconColor:
+        (monthlyTransactions?.flow ?? 0) >= 0 ? "text-success" : "text-danger",
       format: (val: number) =>
-        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`
+        `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`,
+      subInfo: {
+        in: monthlyTransactions?.in ?? 0,
+        out: monthlyTransactions?.out ?? 0
+      }
     }
   ]
 
@@ -86,7 +102,7 @@ export function AnalyticsCards() {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
-          <Card key={card.title} className="min-h-34">
+          <Card key={card.title} className="min-h-40">
             <CardBody className="p-6">
               <Skeleton className="mb-2 h-4 w-24 rounded-lg" />
               <Skeleton className="mb-2 h-8 w-32 rounded-lg" />
@@ -120,25 +136,40 @@ export function AnalyticsCards() {
                   <Icon size={20} className={card.iconColor} />
                 </div>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-semibold">
-                  {card.format(card.value)}
-                </p>
-                {card.trend !== undefined && (
-                  <div
-                    className={cn(
-                      "flex items-center gap-1 text-xs font-medium",
-                      isPositive ? "text-success" : "text-danger"
-                    )}
-                  >
-                    {isPositive ? (
-                      <IconTrendingUp size={14} />
-                    ) : (
-                      <IconTrendingDown size={14} />
-                    )}
-                    <span>{Math.abs(card.trend).toFixed(1)}%</span>
-                  </div>
-                )}
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-2xl font-semibold">
+                    {card.format(card.value)}
+                  </p>
+                  {card.trend !== undefined && (
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 text-xs font-medium",
+                        isPositive ? "text-success" : "text-danger"
+                      )}
+                    >
+                      {isPositive ? (
+                        <IconTrendingUp size={14} />
+                      ) : (
+                        <IconTrendingDown size={14} />
+                      )}
+                      <span>{Math.abs(card.trend).toFixed(1)}%</span>
+                    </div>
+                  )}
+
+                  {card.subInfo && (
+                    <div className="flex items-center gap-2 text-[10px] font-medium text-default-400">
+                      <div className="flex items-center gap-0.5 text-success/80">
+                        <IconTrendingUp size={12} />
+                        <span>{formatPrice(card.subInfo.in)}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 text-danger/80">
+                        <IconTrendingDown size={12} />
+                        <span>{formatPrice(card.subInfo.out)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardBody>
           </Card>

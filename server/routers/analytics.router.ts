@@ -80,6 +80,12 @@ export const analyticsRouter = new Hono()
       // Daily transactions flow (today's net cash flow: cash_in - cash_out)
       db
         .select({
+          in: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`.as(
+            "in"
+          ),
+          out: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`.as(
+            "out"
+          ),
           flow: sql<number>`COALESCE(
             SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END) -
             SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END),
@@ -97,6 +103,12 @@ export const analyticsRouter = new Hono()
       // Monthly transactions flow (current month's net cash flow: cash_in - cash_out)
       db
         .select({
+          in: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`.as(
+            "in"
+          ),
+          out: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`.as(
+            "out"
+          ),
           flow: sql<number>`COALESCE(
             SUM(CASE WHEN ${transactions.type} = 'cash_in' THEN ${transactions.amount}::numeric ELSE 0 END) -
             SUM(CASE WHEN ${transactions.type} = 'cash_out' THEN ${transactions.amount}::numeric ELSE 0 END),
@@ -117,10 +129,17 @@ export const analyticsRouter = new Hono()
     const todaySales = Number(todaySalesResult[0]?.total ?? 0)
     const totalCustomers = Number(totalCustomersResult[0]?.count ?? 0)
     const lastMonthSales = Number(lastMonthSalesResult[0]?.total ?? 0)
-    const dailyTransactionsFlow = Number(dailyTransactionsResult[0]?.flow ?? 0)
-    const monthlyTransactionsFlow = Number(
-      monthlyTransactionsResult[0]?.flow ?? 0
-    )
+
+    const dailyTransactionsFlow = {
+      in: Number(dailyTransactionsResult[0]?.in ?? 0),
+      out: Number(dailyTransactionsResult[0]?.out ?? 0),
+      flow: Number(dailyTransactionsResult[0]?.flow ?? 0)
+    }
+    const monthlyTransactionsFlow = {
+      in: Number(monthlyTransactionsResult[0]?.in ?? 0),
+      out: Number(monthlyTransactionsResult[0]?.out ?? 0),
+      flow: Number(monthlyTransactionsResult[0]?.flow ?? 0)
+    }
 
     const monthlyGrowth =
       lastMonthSales > 0
