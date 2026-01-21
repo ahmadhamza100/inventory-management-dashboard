@@ -4,11 +4,12 @@ import { Logo } from "@/components/logo"
 import { cn } from "@heroui/react"
 import { useSidebar } from "./context"
 import { SidebarItem } from "./sidebar-item"
-import { SIDEBAR_ITEMS } from "./items"
+import { useSidebarItems } from "./items"
 import { LogoutButton } from "./logout-button"
 
 export function Sidebar() {
   const { isOpen } = useSidebar()
+  const items = useSidebarItems()
 
   return (
     <aside
@@ -29,7 +30,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-3">
-        {SIDEBAR_ITEMS.map((item) => (
+        {items.map((item) => (
           <SidebarItem key={item.href} {...item} />
         ))}
       </nav>

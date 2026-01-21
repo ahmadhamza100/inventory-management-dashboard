@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { Logo } from "@/components/logo"
-import { SIDEBAR_ITEMS } from "./items"
+import { useSidebarItems } from "./items"
 import { NavItemButton } from "./nav-item-button"
 import { LogoutButton } from "./logout-button"
 import {
@@ -20,6 +20,7 @@ type MobileSidebarProps = {
 
 export function MobileSidebar({ isOpen, onOpenChange }: MobileSidebarProps) {
   const pathname = usePathname()
+  const items = useSidebarItems()
 
   return (
     <Drawer
@@ -37,7 +38,7 @@ export function MobileSidebar({ isOpen, onOpenChange }: MobileSidebarProps) {
             </DrawerHeader>
             <DrawerBody className="flex flex-col p-3">
               <nav className="flex-1 space-y-1">
-                {SIDEBAR_ITEMS.map((item) => {
+                {items.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <NavItemButton

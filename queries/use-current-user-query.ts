@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/utils/supabase/client"
+import { getUserName } from "@/utils/auth"
 
 export function useCurrentUserQuery() {
   const { data, ...query } = useQuery({
@@ -14,7 +15,7 @@ export function useCurrentUserQuery() {
     ...query,
     user: {
       ...data,
-      name: data?.user_metadata?.full_name || data?.email?.split("@")[0]
+      name: getUserName(data)
     }
   }
 }

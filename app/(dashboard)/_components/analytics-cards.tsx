@@ -86,7 +86,9 @@ export function AnalyticsCards() {
       value: monthlyTransactions?.flow ?? 0,
       icon: IconTransactionDollar,
       bgColor:
-        (monthlyTransactions?.flow ?? 0) >= 0 ? "bg-success/10" : "bg-danger/10",
+        (monthlyTransactions?.flow ?? 0) >= 0
+          ? "bg-success/10"
+          : "bg-danger/10",
       iconColor:
         (monthlyTransactions?.flow ?? 0) >= 0 ? "text-success" : "text-danger",
       format: (val: number) =>

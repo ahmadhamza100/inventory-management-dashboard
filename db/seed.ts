@@ -4,8 +4,6 @@ import { db } from "./index"
 import { customers, invoiceItems, invoices, products } from "./schema"
 import { generateSKU, generateInvoiceId } from "@/utils/helpers"
 
-
-
 const productNames = [
   "Wireless Headphones",
   "Smart Watch",
