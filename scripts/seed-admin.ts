@@ -1,5 +1,4 @@
 import * as readline from "readline"
-import { env } from "@/env.config"
 import { createAdminClient } from "@/utils/supabase/admin"
 
 const DEFAULT_EMAIL = "admin@example.com"
@@ -18,11 +17,6 @@ async function createAdmin() {
     input: process.stdin,
     output: process.stdout
   })
-
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("SUPABASE_SERVICE_ROLE_KEY is not set")
-    process.exit(1)
-  }
 
   try {
     const emailInput = await question(

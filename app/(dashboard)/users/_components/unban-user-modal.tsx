@@ -71,7 +71,11 @@ export function UnbanUserModal() {
               <Button variant="flat" onPress={onClose} isDisabled={isPending}>
                 Cancel
               </Button>
-              <Button color="success" onPress={handleUnban} isLoading={isPending}>
+              <Button
+                color="success"
+                onPress={handleUnban}
+                isLoading={isPending}
+              >
                 Unban User
               </Button>
             </div>

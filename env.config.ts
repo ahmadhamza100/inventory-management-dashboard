@@ -5,7 +5,7 @@ export const env = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "production"]).default("development"),
     DATABASE_URL: z.url(),
-    SUPABASE_SERVICE_ROLE_KEY: z.string().nullish()
+    SUPABASE_SERVICE_ROLE_KEY: z.string()
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),

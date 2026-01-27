@@ -1,7 +1,13 @@
 import { create } from "zustand"
 import type { User } from "@/queries/use-users-query"
 
-type UserModalType = "create" | "update" | "ban" | "unban" | "delete" | "change-password"
+type UserModalType =
+  | "create"
+  | "update"
+  | "ban"
+  | "unban"
+  | "delete"
+  | "change-password"
 
 interface UserModalStore {
   type: UserModalType | null

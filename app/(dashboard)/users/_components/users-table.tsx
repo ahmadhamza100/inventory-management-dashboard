@@ -111,11 +111,7 @@ export function UsersTable() {
     (user: User, columnKey: React.Key) => {
       switch (columnKey) {
         case "name":
-          return (
-            <span className="text-sm font-medium">
-              {user.name}
-            </span>
-          )
+          return <span className="text-sm font-medium">{user.name}</span>
         case "email":
           return <span className="text-sm text-default-500">{user.email}</span>
         case "role":
