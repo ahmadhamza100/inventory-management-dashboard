@@ -151,7 +151,7 @@ export function ProductsTable() {
           return (
             <button
               type="button"
-              className="font-mono text-sm text-default-500"
+              className="font-mono text-sm whitespace-nowrap text-default-500"
               onClick={() => navigator.clipboard.writeText(product.sku)}
             >
               {product.sku}

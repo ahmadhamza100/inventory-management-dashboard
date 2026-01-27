@@ -13,6 +13,15 @@ const app = new Hono()
   .basePath("/api")
   .use(superJsonMiddleware)
   .use(authMiddleware)
+  .onError((err, c) => {
+    console.error("[API Error]", c.req.method, c.req.path, err)
+
+    if (err instanceof HTTPException) {
+      return c.json({ error: err.message }, err.status)
+    }
+
+    return c.json({ error: "Internal server error" }, 500)
+  })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const routes = app
@@ -22,16 +31,6 @@ const routes = app
   .route("/analytics", analyticsRouter)
   .route("/transactions", transactionsRouter)
   .route("/users", usersRouter)
-
-app.onError((err, c) => {
-  console.error("[API Error]", c.req.method, c.req.path, err)
-
-  if (err instanceof HTTPException) {
-    return c.json({ error: err.message }, err.status)
-  }
-
-  return c.json({ error: "Internal server error" }, 500)
-})
 
 type ApiType = typeof routes
 

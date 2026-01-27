@@ -196,8 +196,9 @@ export function InvoicesTable() {
         case "id":
           return (
             <button
+              type="button"
               onClick={() => openInvoiceModal("view", invoice)}
-              className="font-mono text-sm font-medium"
+              className="font-mono text-sm font-medium whitespace-nowrap"
             >
               #{invoice.id}
             </button>
