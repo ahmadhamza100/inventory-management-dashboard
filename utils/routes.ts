@@ -2,6 +2,7 @@ export const ROUTES = {
   login: "/login",
   resetPassword: "/reset-password",
   resetPasswordToken: (token: string) => `/reset-password/${token}`,
+  banned: "/banned",
   dashboard: "/",
   products: "/products",
   customers: "/customers",
@@ -11,7 +12,7 @@ export const ROUTES = {
   settings: "/settings"
 } as const
 
-export const PUBLIC_ROUTES = [ROUTES.login, ROUTES.resetPassword] as const
+export const PUBLIC_ROUTES = [ROUTES.login, ROUTES.resetPassword, ROUTES.banned] as const
 
 export const PROTECTED_ROUTES = [
   ROUTES.dashboard,
