@@ -41,6 +41,7 @@ export default function LoginPage() {
 
       router.push(ROUTES.dashboard)
       revalidatePathAction("/login")
+      revalidatePathAction("/", "layout")
     }
   })
 
