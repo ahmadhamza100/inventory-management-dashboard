@@ -8,14 +8,11 @@ import { addToast, Button, Input } from "@heroui/react"
 import { Logo } from "@/components/logo"
 import { PasswordInput } from "@/components/password-input"
 import { createClient } from "@/utils/supabase/client"
-import { useRouter } from "next/navigation"
 import { ROUTES } from "@/utils/routes"
 import { FormError } from "@/components/form-error"
-import { revalidatePathAction } from "@/actions/revalidate-path"
 
 export default function LoginPage() {
   const supabase = createClient()
-  const router = useRouter()
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
