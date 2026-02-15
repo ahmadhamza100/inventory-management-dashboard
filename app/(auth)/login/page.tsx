@@ -39,9 +39,7 @@ export default function LoginPage() {
         color: "success"
       })
 
-      router.push(ROUTES.dashboard)
-      revalidatePathAction("/login")
-      revalidatePathAction("/", "layout")
+      window?.location?.replace(ROUTES.dashboard)
     }
   })
 
