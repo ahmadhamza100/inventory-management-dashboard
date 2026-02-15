@@ -11,29 +11,44 @@ import {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 30,
     backgroundColor: "#ffffff",
     fontFamily: "Courier",
     fontSize: 10
   },
   header: {
-    marginBottom: 30,
-    borderBottom: "1px solid #e5e7eb",
-    paddingBottom: 20
+    marginBottom: 20,
+    borderBottom: "2px solid #2563eb",
+    paddingBottom: 16
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10
+  },
+  logoContainer: {
+    flexDirection: "column",
+    alignItems: "flex-start"
   },
   logo: {
-    width: 118,
     height: 40,
-    borderRadius: 8,
-    objectFit: "contain"
+    borderRadius: 6,
+    objectFit: "contain",
+    marginBottom: 6
   },
-  logoText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2563eb"
+  businessTagline: {
+    fontSize: 7,
+    color: "#374151",
+    lineHeight: 1.4,
+    maxWidth: 200,
+    marginTop: 4
+  },
+  invoiceInfo: {
+    alignItems: "flex-end"
   },
   invoiceTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
     color: "#111827",
     marginBottom: 4
@@ -44,52 +59,52 @@ const styles = StyleSheet.create({
     fontFamily: "Courier"
   },
   section: {
-    marginBottom: 24
+    marginBottom: 16
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "bold",
     color: "#374151",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: 8,
     borderBottom: "1px solid #e5e7eb",
     paddingBottom: 4
   },
   row: {
     flexDirection: "row",
-    marginBottom: 8,
-    gap: 16
+    marginBottom: 6,
+    gap: 12
   },
   label: {
-    fontSize: 9,
+    fontSize: 8,
     color: "#6b7280",
-    width: 80,
+    width: 70,
     textTransform: "uppercase",
     letterSpacing: 0.3
   },
   value: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#111827",
     flex: 1
   },
   valueBold: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#111827",
     fontWeight: "bold",
     flex: 1
   },
   table: {
-    marginTop: 8
+    marginTop: 6
   },
   tableHeader: {
     flexDirection: "row",
     borderBottom: "1px solid #e5e7eb",
-    paddingBottom: 8,
-    marginBottom: 8
+    paddingBottom: 6,
+    marginBottom: 6
   },
   tableHeaderText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#6b7280",
     textTransform: "uppercase",
@@ -97,15 +112,15 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottom: "1px solid #f3f4f6"
   },
   tableCell: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#111827"
   },
   tableCellNumber: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#111827",
     fontFamily: "Courier",
     textAlign: "right"
@@ -127,48 +142,56 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
   summary: {
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 16,
+    paddingTop: 12,
     borderTop: "2px solid #111827"
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
-    paddingVertical: 4
+    marginBottom: 6,
+    paddingVertical: 3
   },
   summaryLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#374151"
   },
   summaryValue: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#111827",
     fontFamily: "Courier",
     fontWeight: "bold"
   },
   summaryValueTotal: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#111827",
     fontFamily: "Courier",
     fontWeight: "bold"
   },
   footer: {
-    marginTop: 40,
-    paddingTop: 20,
-    borderTop: "1px solid #e5e7eb",
-    fontSize: 8,
-    color: "#9ca3af",
+    marginTop: 30,
+    paddingTop: 16,
+    borderTop: "2px solid #2563eb",
+    fontSize: 7,
+    color: "#374151",
     textAlign: "center"
+  },
+  footerContact: {
+    fontSize: 7,
+    color: "#111827",
+    fontWeight: "bold",
+    marginTop: 6,
+    lineHeight: 1.5
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 4,
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "bold",
     textTransform: "uppercase",
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
+    alignSelf: "flex-start"
   },
   statusPaid: {
     backgroundColor: "#d1fae5",
@@ -177,6 +200,14 @@ const styles = StyleSheet.create({
   statusPending: {
     backgroundColor: "#fef3c7",
     color: "#92400e"
+  },
+  twoColumnSection: {
+    flexDirection: "row",
+    gap: 20,
+    marginBottom: 16
+  },
+  column: {
+    flex: 1
   }
 })
 
@@ -193,36 +224,71 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image src="/logo.jpeg" style={styles.logo} />
-          <Text style={styles.invoiceTitle}>Invoice</Text>
-          <Text style={styles.invoiceNumber}>#{invoice.id}</Text>
+          <View style={styles.headerTop}>
+            <View style={styles.logoContainer}>
+              <Image src="/logo.jpeg" style={styles.logo} />
+              <Text style={styles.businessTagline}>
+                Deals in Laparoscope, Urology, ENT,{"\n"}
+                General Surgery Instruments &{"\n"}
+                Endoscopy Camera Equipment
+              </Text>
+            </View>
+            <View style={styles.invoiceInfo}>
+              <Text style={styles.invoiceTitle}>INVOICE</Text>
+              <Text style={styles.invoiceNumber}>#{invoice.id}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Customer Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Customer Information</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Name</Text>
-            <Text style={styles.valueBold}>{invoice.customer.name}</Text>
+        {/* Two Column Layout for Customer Info and Invoice Dates */}
+        <View style={styles.twoColumnSection}>
+          {/* Customer Information */}
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>Customer Information</Text>
+            <View style={styles.row}>
+              <Text style={styles.label}>Name</Text>
+              <Text style={styles.valueBold}>{invoice.customer.name}</Text>
+            </View>
+            {invoice.customer.email && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Email</Text>
+                <Text style={styles.value}>{invoice.customer.email}</Text>
+              </View>
+            )}
+            {invoice.customer.phone && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Phone</Text>
+                <Text style={styles.value}>{invoice.customer.phone}</Text>
+              </View>
+            )}
+            {invoice.customer.address && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Address</Text>
+                <Text style={styles.value}>{invoice.customer.address}</Text>
+              </View>
+            )}
           </View>
-          {invoice.customer.email && (
+
+          {/* Invoice Dates */}
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>Invoice Dates</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>Email</Text>
-              <Text style={styles.value}>{invoice.customer.email}</Text>
+              <Text style={styles.label}>Date</Text>
+              <Text style={styles.value}>{formatDate(invoice.createdAt)}</Text>
             </View>
-          )}
-          {invoice.customer.phone && (
+
             <View style={styles.row}>
-              <Text style={styles.label}>Phone</Text>
-              <Text style={styles.value}>{invoice.customer.phone}</Text>
+              <Text style={styles.label}>Status</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  isPaid ? styles.statusPaid : styles.statusPending
+                ]}
+              >
+                <Text>{isPaid ? "PAID" : "PENDING"}</Text>
+              </View>
             </View>
-          )}
-          {invoice.customer.address && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Address</Text>
-              <Text style={styles.value}>{invoice.customer.address}</Text>
-            </View>
-          )}
+          </View>
         </View>
 
         {/* Products Table */}
@@ -282,7 +348,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           <View
             style={[
               styles.summaryRow,
-              { marginTop: 8, paddingTop: 12, borderTop: "1px solid #e5e7eb" }
+              { marginTop: 6, paddingTop: 8, borderTop: "1px solid #e5e7eb" }
             ]}
           >
             <Text style={[styles.summaryLabel, { fontWeight: "bold" }]}>
@@ -292,38 +358,15 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               {formatPrice(Math.abs(balanceDue))}
             </Text>
           </View>
-          <View style={[styles.row, { marginTop: 12 }]}>
-            <Text style={styles.label}>Status</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                isPaid ? styles.statusPaid : styles.statusPending
-              ]}
-            >
-              <Text>{isPaid ? "Paid" : "Pending"}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Invoice Dates */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Invoice Dates</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Created</Text>
-            <Text style={styles.value}>{formatDate(invoice.createdAt)}</Text>
-          </View>
-          {invoice.updatedAt && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Updated</Text>
-              <Text style={styles.value}>{formatDate(invoice.updatedAt)}</Text>
-            </View>
-          )}
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>
-            Thank you for your business. This is a computer-generated invoice.
+          <Text style={styles.footerContact}>
+            Address: 265/4 A-EXT, CITI HOUSING, DASKA ROAD, SIALKOT
+          </Text>
+          <Text style={styles.footerContact}>
+            Cell: 0331-8586827 | 0300-6121417 | 0323-2523333
           </Text>
         </View>
       </Page>

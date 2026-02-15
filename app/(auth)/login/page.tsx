@@ -11,6 +11,7 @@ import { createClient } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { ROUTES } from "@/utils/routes"
 import { FormError } from "@/components/form-error"
+import { revalidatePathAction } from "@/actions/revalidate-path"
 
 export default function LoginPage() {
   const supabase = createClient()
@@ -39,6 +40,7 @@ export default function LoginPage() {
       })
 
       router.push(ROUTES.dashboard)
+      revalidatePathAction("/login")
     }
   })
 

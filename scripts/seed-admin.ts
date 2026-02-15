@@ -2,7 +2,7 @@ import * as readline from "readline"
 import { createAdminClient } from "@/utils/supabase/admin"
 
 const DEFAULT_EMAIL = "admin@example.com"
-const DEFAULT_PASSWORD = "admin123456"
+const DEFAULT_PASSWORD = "12345678"
 
 function question(rl: readline.Interface, query: string): Promise<string> {
   return new Promise((resolve) => {
