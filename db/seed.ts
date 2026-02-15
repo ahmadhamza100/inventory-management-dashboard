@@ -70,14 +70,23 @@ function randomDateInMonth(year: number, month: number): Date {
   return new Date(year, month, day, hour, minute, second)
 }
 
+async function clearDatabase() {
+  console.log("🗑️  Clearing database...")
+  await db.delete(invoiceItems)
+  console.log("  ✓ Cleared invoice items")
+  await db.delete(invoices)
+  console.log("  ✓ Cleared invoices")
+  await db.delete(products)
+  console.log("  ✓ Cleared products")
+  await db.delete(customers)
+  console.log("  ✓ Cleared customers")
+  console.log("✅ Database cleared successfully!")
+}
+
 async function seed() {
   console.log("🌱 Starting seed...")
 
-  console.log("🗑️  Clearing existing data...")
-  await db.delete(invoiceItems)
-  await db.delete(invoices)
-  await db.delete(products)
-  await db.delete(customers)
+  await clearDatabase()
 
   console.log("👥 Seeding customers...")
   const now = new Date()
@@ -245,12 +254,30 @@ async function seed() {
   console.log("✨ Seed completed successfully!")
 }
 
-seed()
-  .then(() => {
-    console.log("🎉 Database seeded!")
-    process.exit(0)
-  })
-  .catch((error) => {
-    console.error("❌ Error seeding database:", error)
-    process.exit(1)
-  })
+// Parse command line arguments
+const args = process.argv.slice(2)
+const clearOnly = args.includes("-c") || args.includes("--clear")
+
+if (clearOnly) {
+  // Clear database only
+  clearDatabase()
+    .then(() => {
+      console.log("🎉 Database cleared!")
+      process.exit(0)
+    })
+    .catch((error) => {
+      console.error("❌ Error clearing database:", error)
+      process.exit(1)
+    })
+} else {
+  // Full seed
+  seed()
+    .then(() => {
+      console.log("🎉 Database seeded!")
+      process.exit(0)
+    })
+    .catch((error) => {
+      console.error("❌ Error seeding database:", error)
+      process.exit(1)
+    })
+}
