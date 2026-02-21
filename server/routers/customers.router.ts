@@ -7,9 +7,11 @@ import { customers, invoices } from "@/db/schema"
 
 export const customersRouter = new Hono()
   .get("/", async (c) => {
+    const adminId = c.get("adminId")
     const data = await db
       .select({
         id: customers.id,
+        adminId: customers.adminId,
         name: customers.name,
         email: customers.email,
         phone: customers.phone,
@@ -21,16 +23,20 @@ export const customersRouter = new Hono()
       })
       .from(customers)
       .leftJoin(invoices, eq(invoices.customerId, customers.id))
-      .where(isNull(customers.deletedAt))
+      .where(
+        and(eq(customers.adminId, adminId), isNull(customers.deletedAt))
+      )
       .groupBy(customers.id)
 
     return c.$json(data)
   })
 
   .post("/", zValidator("json", customerSchema), async (c) => {
+    const adminId = c.get("adminId")
     const data = c.req.valid("json")
     await db.insert(customers).values({
       ...data,
+      adminId,
       email: data.email || null,
       phone: data.phone || null,
       address: data.address || null
@@ -40,6 +46,7 @@ export const customersRouter = new Hono()
   })
 
   .patch("/:id", zValidator("json", customerSchema), async (c) => {
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
     const data = c.req.valid("json")
     await db
@@ -50,17 +57,30 @@ export const customersRouter = new Hono()
         phone: data.phone || null,
         address: data.address || null
       })
-      .where(and(eq(customers.id, id), isNull(customers.deletedAt)))
+      .where(
+        and(
+          eq(customers.id, id),
+          eq(customers.adminId, adminId),
+          isNull(customers.deletedAt)
+        )
+      )
 
     return c.json(null, 200)
   })
 
   .delete("/:id", async (c) => {
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
     await db
       .update(customers)
       .set({ deletedAt: new Date() })
-      .where(and(eq(customers.id, id), isNull(customers.deletedAt)))
+      .where(
+        and(
+          eq(customers.id, id),
+          eq(customers.adminId, adminId),
+          isNull(customers.deletedAt)
+        )
+      )
 
     return c.json(null, 200)
   })

@@ -32,7 +32,7 @@ export function ProductsForm() {
       name: product?.name ?? "",
       price: Number(product?.price) ?? undefined,
       stock: product?.stock ?? undefined,
-      image: product?.image ?? null
+      images: product?.images ?? undefined
     }
   }, [product])
 

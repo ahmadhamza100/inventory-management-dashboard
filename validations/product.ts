@@ -13,7 +13,7 @@ export const productSchema = z.object({
     .number("Stock is required")
     .int("Stock must be a whole number")
     .min(0, "Stock cannot be negative"),
-  image: z.string().nullish()
+  images: z.array(z.string().url()).optional()
 })
 
 export type ProductSchema = z.infer<typeof productSchema>

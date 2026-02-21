@@ -139,9 +139,9 @@ export function ViewInvoiceDrawer() {
                     key={index}
                     className="flex items-center gap-3 rounded-lg border border-divider/50 bg-content1 p-3"
                   >
-                    {product.image ? (
+                    {product.images?.[0] ? (
                       <Image
-                        src={product.image}
+                        src={product.images[0]}
                         alt={product.name || "Product"}
                         width={64}
                         height={64}

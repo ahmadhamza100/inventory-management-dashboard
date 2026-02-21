@@ -1,11 +1,13 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, isNull, sql, gte, lte, sum, count } from "drizzle-orm"
+import { and, eq, isNull, sql, gte, lte, sum, count } from "drizzle-orm"
 import { invoices, customers, invoiceItems, transactions } from "@/db/schema"
 
 export const analyticsRouter = new Hono()
   // Get dashboard cards data (monthly sales, today sales, total customers)
   .get("/cards", async (c) => {
+    const adminId = c.get("adminId")
+
     const now = new Date()
     const startOfToday = new Date(
       now.getFullYear(),
@@ -52,26 +54,40 @@ export const analyticsRouter = new Hono()
         .select({ total: sum(invoices.total) })
         .from(invoices)
         .where(
-          and(isNull(invoices.deletedAt), gte(invoices.createdAt, startOfMonth))
+          and(
+            eq(invoices.adminId, adminId),
+            isNull(invoices.deletedAt),
+            gte(invoices.createdAt, startOfMonth)
+          )
         ),
       // Today sales
       db
         .select({ total: sum(invoices.total) })
         .from(invoices)
         .where(
-          and(isNull(invoices.deletedAt), gte(invoices.createdAt, startOfToday))
+          and(
+            eq(invoices.adminId, adminId),
+            isNull(invoices.deletedAt),
+            gte(invoices.createdAt, startOfToday)
+          )
         ),
       // Total customers
       db
         .select({ count: count() })
         .from(customers)
-        .where(isNull(customers.deletedAt)),
+        .where(
+          and(
+            eq(customers.adminId, adminId),
+            isNull(customers.deletedAt)
+          )
+        ),
       // Monthly growth (compare with last month)
       db
         .select({ total: sum(invoices.total) })
         .from(invoices)
         .where(
           and(
+            eq(invoices.adminId, adminId),
             isNull(invoices.deletedAt),
             gte(invoices.createdAt, startOfLastMonth),
             lte(invoices.createdAt, endOfLastMonth)
@@ -95,6 +111,7 @@ export const analyticsRouter = new Hono()
         .from(transactions)
         .where(
           and(
+            eq(transactions.adminId, adminId),
             isNull(transactions.deletedAt),
             gte(transactions.date, startOfToday),
             lte(transactions.date, endOfToday)
@@ -118,6 +135,7 @@ export const analyticsRouter = new Hono()
         .from(transactions)
         .where(
           and(
+            eq(transactions.adminId, adminId),
             isNull(transactions.deletedAt),
             gte(transactions.date, startOfMonth),
             lte(transactions.date, endOfMonth)
@@ -158,6 +176,8 @@ export const analyticsRouter = new Hono()
 
   // Get monthly performance data for area chart
   .get("/monthly-performance", async (c) => {
+    const adminId = c.get("adminId")
+
     const now = new Date()
     const startOfYear = new Date(now.getFullYear(), now.getMonth() - 11, 1)
     const endOfCurrentMonth = new Date(
@@ -178,6 +198,7 @@ export const analyticsRouter = new Hono()
       .from(invoices)
       .where(
         and(
+          eq(invoices.adminId, adminId),
           isNull(invoices.deletedAt),
           gte(invoices.createdAt, startOfYear),
           lte(invoices.createdAt, endOfCurrentMonth)
@@ -224,6 +245,8 @@ export const analyticsRouter = new Hono()
 
   // Get payment status distribution for pie chart
   .get("/payment-status", async (c) => {
+    const adminId = c.get("adminId")
+
     // Use SQL to count payment statuses in a single query
     const paymentStatusResult = await db
       .select({
@@ -241,7 +264,9 @@ export const analyticsRouter = new Hono()
           )
       })
       .from(invoices)
-      .where(isNull(invoices.deletedAt))
+      .where(
+        and(eq(invoices.adminId, adminId), isNull(invoices.deletedAt))
+      )
 
     const result = paymentStatusResult[0]
 
@@ -254,6 +279,7 @@ export const analyticsRouter = new Hono()
 
   // Get top products by sales for pie chart (alternative)
   .get("/top-products", async (c) => {
+    const adminId = c.get("adminId")
     const { products } = await import("@/db/schema")
 
     // Use a single query with JOIN to get product names and sales
@@ -268,7 +294,12 @@ export const analyticsRouter = new Hono()
       })
       .from(invoiceItems)
       .leftJoin(products, sql`${products.id} = ${invoiceItems.productId}`)
-      .where(isNull(invoiceItems.deletedAt))
+      .where(
+        and(
+          eq(invoiceItems.adminId, adminId),
+          isNull(invoiceItems.deletedAt)
+        )
+      )
       .groupBy(invoiceItems.productId, products.name)
       .orderBy(sql`totalSales DESC`)
       .limit(5)

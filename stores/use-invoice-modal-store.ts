@@ -19,7 +19,7 @@ export type InvoiceWithDetails = {
     price: string
     stock: number | null
     quantity: number
-    image: string | null
+    images: string[]
   }>
 }
 

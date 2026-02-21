@@ -93,9 +93,9 @@ export function ProductSelect() {
               textValue={`${product.name} ${product.sku}`}
             >
               <div className="flex w-full items-center gap-3">
-                {product.image ? (
+                {product.images?.[0] ? (
                   <Image
-                    src={product.image}
+                    src={product.images[0]}
                     alt={product.name}
                     width={40}
                     height={40}

@@ -48,9 +48,9 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-divider/50 bg-content1 p-4">
-      {product?.image ? (
+      {product?.images?.[0] ? (
         <Image
-          src={product.image}
+          src={product.images[0]}
           alt={product.name}
           width={64}
           height={64}

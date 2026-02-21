@@ -8,6 +8,8 @@ import { generateInvoiceId } from "@/utils/helpers"
 
 export const invoicesRouter = new Hono()
   .get("/", async (c) => {
+    const adminId = c.get("adminId")
+
     const invoicesData = await db
       .select({
         id: invoices.id,
@@ -26,7 +28,9 @@ export const invoicesRouter = new Hono()
       })
       .from(invoices)
       .innerJoin(customers, eq(customers.id, invoices.customerId))
-      .where(isNull(invoices.deletedAt))
+      .where(
+        and(eq(invoices.adminId, adminId), isNull(invoices.deletedAt))
+      )
       .orderBy(desc(invoices.createdAt))
 
     if (invoicesData.length === 0) {
@@ -43,13 +47,14 @@ export const invoicesRouter = new Hono()
         product: {
           name: products.name,
           stock: products.stock,
-          image: products.image
+          images: products.images
         }
       })
       .from(invoiceItems)
       .leftJoin(products, eq(products.id, invoiceItems.productId))
       .where(
         and(
+          eq(invoiceItems.adminId, adminId),
           inArray(invoiceItems.invoiceId, invoiceIds),
           isNull(invoiceItems.deletedAt)
         )
@@ -66,7 +71,7 @@ export const invoicesRouter = new Hono()
           price: item.price,
           stock: item.product?.stock ?? null,
           quantity: item.quantity,
-          image: item.product?.image ?? null
+          images: item.product?.images ?? []
         })
         return acc
       },
@@ -77,7 +82,7 @@ export const invoicesRouter = new Hono()
           price: string
           stock: number | null
           quantity: number
-          image: string | null
+          images: string[]
         }>
       >
     )
@@ -91,6 +96,7 @@ export const invoicesRouter = new Hono()
   })
 
   .post("/", zValidator("json", invoiceSchema), async (c) => {
+    const adminId = c.get("adminId")
     const { items, amountPaid, customerId } = c.req.valid("json")
 
     const total = items.reduce(
@@ -105,6 +111,7 @@ export const invoicesRouter = new Hono()
         >`MAX(CAST(SUBSTRING(${invoices.id} FROM '\\d+') AS INTEGER))`
       })
       .from(invoices)
+      .where(eq(invoices.adminId, adminId))
 
     const nextSequenceNumber = result?.maxId ? Number(result.maxId) + 1 : 1
     const invoiceId = generateInvoiceId(nextSequenceNumber)
@@ -113,6 +120,7 @@ export const invoicesRouter = new Hono()
       .insert(invoices)
       .values({
         id: invoiceId,
+        adminId,
         customerId,
         total: total.toString(),
         amountPaid: amountPaid.toString()
@@ -122,6 +130,7 @@ export const invoicesRouter = new Hono()
     await db.insert(invoiceItems).values(
       items.map((item) => ({
         invoiceId: invoice.id,
+        adminId,
         productId: item.productId,
         quantity: item.quantity,
         price: item.price.toString()
@@ -145,13 +154,19 @@ export const invoicesRouter = new Hono()
       await db
         .update(products)
         .set({ stock: finalSql })
-        .where(inArray(products.id, productIds))
+        .where(
+          and(
+            eq(products.adminId, adminId),
+            inArray(products.id, productIds)
+          )
+        )
     }
 
     return c.json(null, 201)
   })
 
   .patch("/:id", zValidator("json", invoiceSchema), async (c) => {
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
     const { items, amountPaid, customerId } = c.req.valid("json")
 
@@ -167,7 +182,11 @@ export const invoicesRouter = new Hono()
       })
       .from(invoiceItems)
       .where(
-        and(eq(invoiceItems.invoiceId, id), isNull(invoiceItems.deletedAt))
+        and(
+          eq(invoiceItems.invoiceId, id),
+          eq(invoiceItems.adminId, adminId),
+          isNull(invoiceItems.deletedAt)
+        )
       )
 
     const validOldItems = oldItems.filter((item) => item.productId)
@@ -193,7 +212,12 @@ export const invoicesRouter = new Hono()
         .set({
           stock: finalSql
         })
-        .where(inArray(products.id, productIds))
+        .where(
+          and(
+            eq(products.adminId, adminId),
+            inArray(products.id, productIds)
+          )
+        )
     }
 
     await db
@@ -203,17 +227,28 @@ export const invoicesRouter = new Hono()
         total: total.toString(),
         amountPaid: amountPaid.toString()
       })
-      .where(and(eq(invoices.id, id), isNull(invoices.deletedAt)))
+      .where(
+        and(
+          eq(invoices.id, id),
+          eq(invoices.adminId, adminId),
+          isNull(invoices.deletedAt)
+        )
+      )
 
     await db
       .delete(invoiceItems)
       .where(
-        and(eq(invoiceItems.invoiceId, id), isNull(invoiceItems.deletedAt))
+        and(
+          eq(invoiceItems.invoiceId, id),
+          eq(invoiceItems.adminId, adminId),
+          isNull(invoiceItems.deletedAt)
+        )
       )
 
     await db.insert(invoiceItems).values(
       items.map((item) => ({
         invoiceId: id,
+        adminId,
         productId: item.productId,
         quantity: item.quantity,
         price: item.price.toString()
@@ -239,18 +274,30 @@ export const invoicesRouter = new Hono()
         .set({
           stock: finalSql
         })
-        .where(inArray(products.id, productIds))
+        .where(
+          and(
+            eq(products.adminId, adminId),
+            inArray(products.id, productIds)
+          )
+        )
     }
 
     return c.json(null, 200)
   })
 
   .delete("/:id", async (c) => {
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
     await db
       .update(invoices)
       .set({ deletedAt: new Date() })
-      .where(and(eq(invoices.id, id), isNull(invoices.deletedAt)))
+      .where(
+        and(
+          eq(invoices.id, id),
+          eq(invoices.adminId, adminId),
+          isNull(invoices.deletedAt)
+        )
+      )
 
     return c.json(null, 200)
   })

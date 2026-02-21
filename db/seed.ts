@@ -1,7 +1,14 @@
 import "dotenv/config"
 
+import * as readline from "readline"
 import { db } from "./index"
-import { customers, invoiceItems, invoices, products } from "./schema"
+import {
+  customers,
+  invoiceItems,
+  invoices,
+  products,
+  transactions
+} from "./schema"
 import { generateSKU, generateInvoiceId } from "@/utils/helpers"
 
 const productNames = [
@@ -70,12 +77,22 @@ function randomDateInMonth(year: number, month: number): Date {
   return new Date(year, month, day, hour, minute, second)
 }
 
+function question(rl: readline.Interface, query: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      resolve(answer.trim())
+    })
+  })
+}
+
 async function clearDatabase() {
   console.log("🗑️  Clearing database...")
   await db.delete(invoiceItems)
   console.log("  ✓ Cleared invoice items")
   await db.delete(invoices)
   console.log("  ✓ Cleared invoices")
+  await db.delete(transactions)
+  console.log("  ✓ Cleared transactions")
   await db.delete(products)
   console.log("  ✓ Cleared products")
   await db.delete(customers)
@@ -84,7 +101,23 @@ async function clearDatabase() {
 }
 
 async function seed() {
-  console.log("🌱 Starting seed...")
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  const adminId = await question(
+    rl,
+    "Enter admin user ID (UUID from Supabase Auth): "
+  )
+  rl.close()
+
+  if (!adminId || adminId.length < 10) {
+    console.error("❌ A valid admin user ID is required to seed data.")
+    process.exit(1)
+  }
+
+  console.log(`🌱 Starting seed for admin: ${adminId}`)
 
   await clearDatabase()
 
@@ -107,6 +140,7 @@ async function seed() {
         )
 
         return {
+          adminId,
           name,
           email: customerEmails[index],
           phone: `+1-${randomInt(200, 999)}-${randomInt(100, 999)}-${randomInt(1000, 9999)}`,
@@ -135,14 +169,15 @@ async function seed() {
         )
 
         return {
+          adminId,
           name,
           price: randomFloat(10, 500).toString(),
           stock: randomInt(0, 200),
           sku: generateSKU(),
-          image:
+          images:
             Math.random() > 0.3
-              ? `https://picsum.photos/400/400?random=${Math.random()}`
-              : null,
+              ? [`https://picsum.photos/400/400?random=${Math.random()}`]
+              : [],
           createdAt,
           updatedAt
         }
@@ -200,6 +235,7 @@ async function seed() {
 
       return {
         invoice: {
+          adminId,
           customerId: customer.id,
           total: total.toString(),
           amountPaid: amountPaid.toString(),
@@ -207,6 +243,7 @@ async function seed() {
           updatedAt: invoiceDate
         },
         items: selectedProducts.map((item) => ({
+          adminId,
           productId: item.product.id,
           quantity: item.quantity,
           price: item.price,
@@ -239,6 +276,7 @@ async function seed() {
   await db.insert(invoiceItems).values(
     invoiceItemsToInsert.map((item) => ({
       invoiceId: seededInvoices[item.invoiceIndex].id,
+      adminId: item.adminId,
       productId: item.productId,
       quantity: item.quantity,
       price: item.price,

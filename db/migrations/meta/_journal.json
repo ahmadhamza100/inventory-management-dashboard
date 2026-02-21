@@ -36,6 +36,27 @@
       "when": 1768167704264,
       "tag": "0004_free_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771696215443,
+      "tag": "0005_outstanding_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771698132604,
+      "tag": "0006_melodic_kat_farrell",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771698709830,
+      "tag": "0007_ancient_james_howlett",
+      "breakpoints": true
     }
   ]
 }

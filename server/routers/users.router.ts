@@ -6,12 +6,38 @@ import { adminMiddleware } from "@/server/middlewares/admin"
 import { HTTPException } from "hono/http-exception"
 import { createAdminClient } from "@/utils/supabase/admin"
 import { getUserName, isBanned } from "@/utils/auth"
+import type { SupabaseClient } from "@supabase/supabase-js"
+
+/**
+ * Fetches a user by ID and verifies they belong to the current admin's tenant.
+ * Throws 404 if user not found, 403 if user doesn't belong to the admin.
+ */
+async function getOwnedUser(
+  auth: SupabaseClient["auth"],
+  adminId: string,
+  userId: string
+) {
+  const { data } = await auth.admin.getUserById(userId)
+
+  if (!data.user) {
+    throw new HTTPException(404, { message: "User not found" })
+  }
+
+  if (data.user.user_metadata?.adminId !== adminId) {
+    throw new HTTPException(403, {
+      message: "Forbidden: user does not belong to your organization"
+    })
+  }
+
+  return data.user
+}
 
 export const usersRouter = new Hono()
   .use(adminMiddleware)
   .get("/", async (c) => {
     const { auth } = createAdminClient()
     const currentUser = c.get("user")
+    const adminId = c.get("adminId")
 
     const { data, error } = await auth.admin.listUsers()
 
@@ -24,15 +50,20 @@ export const usersRouter = new Hono()
         ...user,
         name: getUserName(user),
         banned: isBanned(user),
-        role: user.user_metadata?.role || "user"
+        role: (user.user_metadata?.role as string) || "user"
       }))
-      .filter((user) => user.id !== currentUser.id)
+      .filter(
+        (user) =>
+          user.id !== currentUser.id &&
+          user.user_metadata?.adminId === adminId
+      )
 
     return c.$json(users)
   })
 
   .post("/", zValidator("json", createUserSchema), async (c) => {
     const { auth } = createAdminClient()
+    const adminId = c.get("adminId")
     const { email, password, name } = c.req.valid("json")
 
     const { data: authUser, error: authError } = await auth.admin.createUser({
@@ -42,7 +73,8 @@ export const usersRouter = new Hono()
       user_metadata: {
         full_name: name || email.split("@")[0],
         role: "user",
-        banned: false
+        banned: false,
+        adminId
       }
     })
 
@@ -59,7 +91,7 @@ export const usersRouter = new Hono()
         id: authUser.user.id,
         email: authUser.user.email,
         name: getUserName(authUser.user),
-        role: authUser.user.user_metadata?.role || "user"
+        role: (authUser.user.user_metadata?.role as string) || "user"
       },
       201
     )
@@ -67,21 +99,18 @@ export const usersRouter = new Hono()
 
   .patch("/:id", zValidator("json", updateUserSchema), async (c) => {
     const { auth } = createAdminClient()
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
     const { email, name } = c.req.valid("json")
 
-    const { data } = await auth.admin.getUserById(id)
-
-    if (!data.user) {
-      throw new HTTPException(404, { message: "User not found" })
-    }
+    const existingUser = await getOwnedUser(auth, adminId, id)
 
     const { data: updatedUser, error: updateError } =
       await auth.admin.updateUserById(id, {
-        email: email || data.user.email,
+        email: email || existingUser.email,
         user_metadata: {
-          ...data.user.user_metadata,
-          full_name: name || getUserName(data.user)
+          ...existingUser.user_metadata,
+          full_name: name || getUserName(existingUser)
         }
       })
 
@@ -98,17 +127,14 @@ export const usersRouter = new Hono()
 
   .post("/:id/ban", async (c) => {
     const { auth } = createAdminClient()
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
 
-    const { data } = await auth.admin.getUserById(id)
-
-    if (!data.user) {
-      throw new HTTPException(404, { message: "User not found" })
-    }
+    const existingUser = await getOwnedUser(auth, adminId, id)
 
     const { error: banError } = await auth.admin.updateUserById(id, {
       user_metadata: {
-        ...data.user.user_metadata,
+        ...existingUser.user_metadata,
         banned: true
       }
     })
@@ -122,17 +148,14 @@ export const usersRouter = new Hono()
 
   .post("/:id/unban", async (c) => {
     const { auth } = createAdminClient()
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
 
-    const { data } = await auth.admin.getUserById(id)
-
-    if (!data.user) {
-      throw new HTTPException(404, { message: "User not found" })
-    }
+    const existingUser = await getOwnedUser(auth, adminId, id)
 
     const { error: updateError } = await auth.admin.updateUserById(id, {
       user_metadata: {
-        ...data.user.user_metadata,
+        ...existingUser.user_metadata,
         banned: false
       }
     })
@@ -149,14 +172,11 @@ export const usersRouter = new Hono()
     zValidator("json", z.object({ password: z.string().min(8) })),
     async (c) => {
       const { auth } = createAdminClient()
+      const adminId = c.get("adminId")
       const { id } = c.req.param()
       const { password } = c.req.valid("json")
 
-      const { data: existingUser } = await auth.admin.getUserById(id)
-
-      if (!existingUser) {
-        throw new HTTPException(404, { message: "User not found" })
-      }
+      await getOwnedUser(auth, adminId, id)
 
       const { error: updateError } = await auth.admin.updateUserById(id, {
         password
@@ -172,13 +192,10 @@ export const usersRouter = new Hono()
 
   .delete("/:id", async (c) => {
     const { auth } = createAdminClient()
+    const adminId = c.get("adminId")
     const { id } = c.req.param()
 
-    const { data } = await auth.admin.getUserById(id)
-
-    if (!data.user) {
-      throw new HTTPException(404, { message: "User not found" })
-    }
+    await getOwnedUser(auth, adminId, id)
 
     const { error: deleteError } = await auth.admin.deleteUser(id)
 
