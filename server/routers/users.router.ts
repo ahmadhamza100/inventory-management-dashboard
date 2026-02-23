@@ -50,7 +50,7 @@ export const usersRouter = new Hono()
         ...user,
         name: getUserName(user),
         banned: isBanned(user),
-        role: (user.user_metadata?.role as string) || "user"
+        role: (user.user_metadata?.role as string) || "staff"
       }))
       .filter(
         (user) =>
@@ -72,7 +72,7 @@ export const usersRouter = new Hono()
       email_confirm: true,
       user_metadata: {
         full_name: name || email.split("@")[0],
-        role: "user",
+        role: "staff",
         banned: false,
         adminId
       }
@@ -91,7 +91,7 @@ export const usersRouter = new Hono()
         id: authUser.user.id,
         email: authUser.user.email,
         name: getUserName(authUser.user),
-        role: (authUser.user.user_metadata?.role as string) || "user"
+        role: (authUser.user.user_metadata?.role as string) || "staff"
       },
       201
     )

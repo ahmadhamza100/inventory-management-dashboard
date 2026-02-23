@@ -61,7 +61,7 @@ export function UsersTable() {
   const openUserModal = useUserModalStore((state) => state.onOpen)
   const [{ q, role, status, sort }, setSearchParams] = useQueryStates({
     q: parseAsString.withDefault(""),
-    role: parseAsStringEnum(["all", "admin", "user"]).withDefault("all"),
+    role: parseAsStringEnum(["all", "admin", "staff", "user"]).withDefault("all"),
     status: parseAsStringEnum(["all", "active", "banned"]).withDefault("all"),
     sort: parseAsString.withDefault("created_at:desc")
   })
@@ -257,7 +257,8 @@ export function UsersTable() {
           >
             <SelectItem key="all">All Roles</SelectItem>
             <SelectItem key="admin">Admin</SelectItem>
-            <SelectItem key="user">User</SelectItem>
+          <SelectItem key="staff">Staff</SelectItem>
+          <SelectItem key="user">User (legacy)</SelectItem>
           </Select>
           <Select
             className="w-full sm:w-40"

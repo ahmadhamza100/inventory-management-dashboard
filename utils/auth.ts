@@ -26,7 +26,8 @@ export function getAdminId(user: Partial<User> | null | undefined): string | nul
 
   const role = user.user_metadata?.role
   if (role === "admin") return user.id ?? null
-  if (role === "user") {
+  // Backward compatible: older data used role="user" for staff.
+  if (role === "staff" || role === "user") {
     const adminId = user.user_metadata?.adminId
     return typeof adminId === "string" && adminId.length > 0 ? adminId : null
   }
