@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { api } from "@/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,13 @@ export function InvoiceForm() {
 	const { data: allProducts } = useProductsQuery();
 
 	const isEditing = !!invoice;
+	const hasResetForm = useRef(false);
+
+	// Reset ref when modal switches between create/edit or invoices
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional re-run on invoice change
+	useEffect(() => {
+		hasResetForm.current = false;
+	}, [invoice?.id]);
 
 	const defaultValues: DefaultValues<InvoiceSchema> = useMemo(() => {
 		if (invoice) {
@@ -90,8 +97,17 @@ export function InvoiceForm() {
 	const isPending = form.formState.isSubmitting;
 
 	useEffect(() => {
-		form.reset(defaultValues);
-	}, [form, defaultValues]);
+		if (
+			(!isEditing && !hasResetForm.current) ||
+			(isEditing &&
+				allProducts &&
+				allProducts.length > 0 &&
+				!hasResetForm.current)
+		) {
+			form.reset(defaultValues);
+			hasResetForm.current = true;
+		}
+	}, [form, defaultValues, isEditing, allProducts]);
 
 	return (
 		<FormProvider {...form}>

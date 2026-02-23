@@ -4,10 +4,11 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000
-      }
-    }
-  })
+        staleTime: Infinity,
+        gcTime: Infinity,
+      },
+    },
+  });
 }
 
 let browserQueryClient: QueryClient | undefined = undefined
