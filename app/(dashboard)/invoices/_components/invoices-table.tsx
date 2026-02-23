@@ -376,7 +376,7 @@ export function InvoicesTable() {
 							placeholder="Filter by customer"
 							defaultItems={customers || []}
 							selectedKey={customer || null}
-							itemHeight={40}
+							itemHeight={50}
 							onSelectionChange={(key) => {
 								const selectedCustomer = customers?.find((c) => c.id === key);
 								setSearchParams({
@@ -429,7 +429,7 @@ export function InvoicesTable() {
 							placeholder="Filter by product"
 							defaultItems={products || []}
 							selectedKey={product || null}
-							itemHeight={40}
+							itemHeight={50}
 							onSelectionChange={(key) => {
 								const selectedProduct = products?.find((p) => p.id === key);
 								setSearchParams({

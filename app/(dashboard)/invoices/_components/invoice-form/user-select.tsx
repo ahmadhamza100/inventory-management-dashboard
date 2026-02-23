@@ -33,7 +33,7 @@ export function UserSelect() {
 					placeholder="Select customer"
 					defaultItems={customers || []}
 					selectedKey={field.value || null}
-					itemHeight={40}
+					itemHeight={50}
 					onSelectionChange={(key) => {
 						field.onChange(key ? String(key) : "");
 					}}
