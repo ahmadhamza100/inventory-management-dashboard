@@ -22,7 +22,14 @@ export const customersRouter = new Hono()
         invoicesCount: count(invoices.id)
       })
       .from(customers)
-      .leftJoin(invoices, eq(invoices.customerId, customers.id))
+      .leftJoin(
+        invoices,
+        and(
+          eq(invoices.customerId, customers.id),
+          eq(invoices.adminId, adminId),
+          isNull(invoices.deletedAt)
+        )
+      )
       .where(
         and(eq(customers.adminId, adminId), isNull(customers.deletedAt))
       )

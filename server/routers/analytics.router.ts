@@ -293,7 +293,13 @@ export const analyticsRouter = new Hono()
           )
       })
       .from(invoiceItems)
-      .leftJoin(products, sql`${products.id} = ${invoiceItems.productId}`)
+      .leftJoin(
+        products,
+        and(
+          eq(products.id, invoiceItems.productId),
+          eq(products.adminId, adminId)
+        )
+      )
       .where(
         and(
           eq(invoiceItems.adminId, adminId),

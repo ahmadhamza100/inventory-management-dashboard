@@ -3,8 +3,15 @@ import { db } from "@/db"
 import { and, eq, inArray, isNull, desc, sql, type SQL } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { invoiceSchema } from "@/validations/invoice"
-import { invoices, invoiceItems, customers, products } from "@/db/schema"
+import {
+  invoices,
+  invoiceItems,
+  customers,
+  products,
+  invoiceCounters
+} from "@/db/schema"
 import { generateInvoiceId } from "@/utils/helpers"
+import { HTTPException } from "hono/http-exception"
 
 export const invoicesRouter = new Hono()
   .get("/", async (c) => {
@@ -27,7 +34,13 @@ export const invoicesRouter = new Hono()
         }
       })
       .from(invoices)
-      .innerJoin(customers, eq(customers.id, invoices.customerId))
+      .innerJoin(
+        customers,
+        and(
+          eq(customers.id, invoices.customerId),
+          eq(customers.adminId, adminId)
+        )
+      )
       .where(
         and(eq(invoices.adminId, adminId), isNull(invoices.deletedAt))
       )
@@ -51,7 +64,13 @@ export const invoicesRouter = new Hono()
         }
       })
       .from(invoiceItems)
-      .leftJoin(products, eq(products.id, invoiceItems.productId))
+      .leftJoin(
+        products,
+        and(
+          eq(products.id, invoiceItems.productId),
+          eq(products.adminId, adminId)
+        )
+      )
       .where(
         and(
           eq(invoiceItems.adminId, adminId),
@@ -104,62 +123,87 @@ export const invoicesRouter = new Hono()
       0
     )
 
-    const [result] = await db
-      .select({
-        maxId: sql<
-          string | null
-        >`MAX(CAST(SUBSTRING(${invoices.id} FROM '\\d+') AS INTEGER))`
-      })
-      .from(invoices)
-      .where(eq(invoices.adminId, adminId))
+    try {
+      await db.transaction(async (tx) => {
+        const [counter] = await tx
+          .insert(invoiceCounters)
+          .values({
+            adminId,
+            nextValue: 2
+          })
+          .onConflictDoUpdate({
+            target: invoiceCounters.adminId,
+            set: {
+              nextValue: sql`${invoiceCounters.nextValue} + 1`,
+              updatedAt: sql`now()`
+            }
+          })
+          .returning({
+            sequenceNumber: sql<number>`${invoiceCounters.nextValue} - 1`
+          })
 
-    const nextSequenceNumber = result?.maxId ? Number(result.maxId) + 1 : 1
-    const invoiceId = generateInvoiceId(nextSequenceNumber)
+        const invoiceId = generateInvoiceId(counter.sequenceNumber)
 
-    const [invoice] = await db
-      .insert(invoices)
-      .values({
-        id: invoiceId,
-        adminId,
-        customerId,
-        total: total.toString(),
-        amountPaid: amountPaid.toString()
-      })
-      .returning()
+        const [invoice] = await tx
+          .insert(invoices)
+          .values({
+            id: invoiceId,
+            adminId,
+            customerId,
+            total: total.toString(),
+            amountPaid: amountPaid.toString()
+          })
+          .returning()
 
-    await db.insert(invoiceItems).values(
-      items.map((item) => ({
-        invoiceId: invoice.id,
-        adminId,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: item.price.toString()
-      }))
-    )
-
-    if (items.length > 0) {
-      const sqlChunks: SQL[] = [sql`(case`]
-      const productIds: string[] = []
-
-      for (const item of items) {
-        sqlChunks.push(
-          sql`when ${products.id} = ${item.productId} then ${products.stock} - ${item.quantity}`
+        await tx.insert(invoiceItems).values(
+          items.map((item) => ({
+            invoiceId: invoice.id,
+            adminId,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price.toString()
+          }))
         )
-        productIds.push(item.productId)
+
+        if (items.length > 0) {
+          const sqlChunks: SQL[] = [sql`(case`]
+          const productIds: string[] = []
+
+          for (const item of items) {
+            sqlChunks.push(
+              sql`when ${products.id} = ${item.productId} then ${products.stock} - ${item.quantity}`
+            )
+            productIds.push(item.productId)
+          }
+
+          sqlChunks.push(sql`end)`)
+          const finalSql = sql.join(sqlChunks, sql.raw(" "))
+
+          await tx
+            .update(products)
+            .set({ stock: finalSql })
+            .where(
+              and(
+                eq(products.adminId, adminId),
+                inArray(products.id, productIds)
+              )
+            )
+        }
+      })
+    } catch (error) {
+      const databaseError = error as { code?: string; constraint_name?: string }
+
+      if (
+        databaseError.code === "23505" &&
+        (databaseError.constraint_name === "invoices_admin_id_id_pk" ||
+          databaseError.constraint_name === "invoices_pkey")
+      ) {
+        throw new HTTPException(409, {
+          message: "Invoice number conflict. Please retry the request."
+        })
       }
 
-      sqlChunks.push(sql`end)`)
-      const finalSql = sql.join(sqlChunks, sql.raw(" "))
-
-      await db
-        .update(products)
-        .set({ stock: finalSql })
-        .where(
-          and(
-            eq(products.adminId, adminId),
-            inArray(products.id, productIds)
-          )
-        )
+      throw error
     }
 
     return c.json(null, 201)

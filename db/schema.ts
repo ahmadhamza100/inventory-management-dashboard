@@ -7,7 +7,9 @@ import {
   uuid,
   varchar,
   pgEnum,
-  index
+  index,
+  primaryKey,
+  foreignKey
 } from "drizzle-orm/pg-core"
 
 const timestamps = {
@@ -59,7 +61,7 @@ export type Customer = typeof customers.$inferSelect
 export const invoices = pgTable(
   "invoices",
   {
-    id: varchar({ length: 50 }).primaryKey().notNull(),
+    id: varchar({ length: 50 }).notNull(),
     adminId: text("admin_id").notNull(),
     customerId: uuid().references(() => customers.id),
     total: decimal({ precision: 10, scale: 2 }).notNull(),
@@ -67,6 +69,10 @@ export const invoices = pgTable(
     ...timestamps
   },
   (table) => [
+    primaryKey({
+      name: "invoices_admin_id_id_pk",
+      columns: [table.adminId, table.id]
+    }),
     index("invoices_admin_deleted_idx").on(table.adminId, table.deletedAt),
     index("invoices_customer_id_idx").on(table.customerId)
   ]
@@ -79,21 +85,34 @@ export const invoiceItems = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
     adminId: text("admin_id").notNull(),
-    invoiceId: varchar({ length: 50 })
-      .notNull()
-      .references(() => invoices.id, { onDelete: "cascade" }),
+    invoiceId: varchar({ length: 50 }).notNull(),
     productId: uuid().references(() => products.id),
     quantity: integer().notNull(),
     price: decimal({ precision: 10, scale: 2 }).notNull(),
     ...timestamps
   },
   (table) => [
+    foreignKey({
+      name: "invoice_items_admin_id_invoiceId_invoices_admin_id_id_fk",
+      columns: [table.adminId, table.invoiceId],
+      foreignColumns: [invoices.adminId, invoices.id]
+    }).onDelete("cascade"),
     index("invoice_items_invoice_id_idx").on(table.invoiceId),
+    index("invoice_items_admin_invoice_id_idx").on(
+      table.adminId,
+      table.invoiceId
+    ),
     index("invoice_items_product_id_idx").on(table.productId)
   ]
 )
 
 export type InvoiceItem = typeof invoiceItems.$inferSelect
+
+export const invoiceCounters = pgTable("invoice_counters", {
+  adminId: text("admin_id").primaryKey().notNull(),
+  nextValue: integer("next_value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+})
 
 export const transactionTypeEnum = pgEnum("transaction_type_enum", [
   "cash_in",
