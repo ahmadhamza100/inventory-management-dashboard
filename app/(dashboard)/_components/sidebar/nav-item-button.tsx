@@ -1,7 +1,7 @@
 "use client"
 
-import { Link } from "@/components/link"
-import { Button, cn } from "@heroui/react"
+import NextLink from "next/link"
+import { buttonVariants, cn } from "@heroui/react"
 import type { ISidebarItem } from "./items"
 
 type NavItemButtonProps = ISidebarItem & {
@@ -19,28 +19,27 @@ export function NavItemButton({
   onPress
 }: NavItemButtonProps) {
   return (
-    <Button
-      as={Link}
+    <NextLink
       href={href}
-      onPress={onPress}
-      variant={isActive ? "flat" : "light"}
-      color={isActive ? "primary" : "default"}
+      onClick={() => onPress?.()}
       className={cn(
-        "w-full min-w-0 justify-start gap-3",
+        buttonVariants({
+          variant: isActive ? "secondary" : "ghost",
+          size: "md"
+        }),
+        "w-full min-w-0 justify-start gap-3 no-underline",
         !showLabel && "justify-center px-0"
       )}
-      startContent={
-        <Icon
-          size={20}
-          className={cn("shrink-0", isActive && "text-primary")}
-        />
-      }
     >
+      <Icon
+        size={20}
+        className={cn("shrink-0", isActive && "text-primary")}
+      />
       {showLabel && (
         <span className={cn("text-sm font-medium", !showLabel && "truncate")}>
           {label}
         </span>
       )}
-    </Button>
+    </NextLink>
   )
 }

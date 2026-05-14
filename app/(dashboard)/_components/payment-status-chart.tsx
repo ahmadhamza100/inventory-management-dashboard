@@ -1,22 +1,25 @@
 "use client"
 
-import { Card, CardBody, CardHeader, Skeleton } from "@heroui/react"
+import { useMemo } from "react"
+import { Card, CardHeader, Skeleton, cn } from "@heroui/react"
 import { usePaymentStatusQuery } from "@/queries/use-payment-status-query"
+import { chartSeriesColors, chartTheme } from "@/utils/chart-theme"
 import {
-  PieChart,
-  Pie,
   Cell,
-  Tooltip,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
-  type PieLabelRenderProps
+  Tooltip
 } from "recharts"
 
-const COLORS = [
-  "hsl(var(--heroui-success))",
-  "hsl(var(--heroui-warning))",
-  "hsl(var(--heroui-danger))"
-]
+const CHART_OUTLINE_RESET =
+  "outline-none focus:outline-none [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none"
+
+const CHART_CARD_CLASS = cn(
+  "overflow-hidden border border-divider/60 shadow-sm outline-none focus-visible:outline-none",
+  CHART_OUTLINE_RESET
+)
 
 type PaymentStatusData = {
   name: string
@@ -26,149 +29,114 @@ type PaymentStatusData = {
 type TooltipContentProps = {
   active?: boolean
   payload?: Array<{
-    payload: PaymentStatusData
+    payload: PaymentStatusData & { fill?: string }
     value: number
   }>
   total: number
 }
 
-const CustomTooltip = ({ active, payload, total }: TooltipContentProps) => {
-  if (active && payload && payload.length) {
-    const data = payload[0]
-    if (!data) return null
-    const percentage = ((data.value / total) * 100).toFixed(1)
-    return (
-      <div className="rounded-lg border border-divider bg-background p-3 shadow-lg">
-        <p className="mb-1 text-sm font-medium">{data.payload.name}</p>
-        <p className="text-sm text-default-600">
-          Count: <span className="font-semibold">{data.value}</span>
-        </p>
-        <p className="text-sm text-default-600">
-          Percentage: <span className="font-semibold">{percentage}%</span>
-        </p>
-      </div>
-    )
-  }
-  return null
-}
-
-const renderCustomLabel = ({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  percent
-}: PieLabelRenderProps) => {
-  if (
-    typeof cx !== "number" ||
-    typeof cy !== "number" ||
-    typeof midAngle !== "number" ||
-    typeof innerRadius !== "number" ||
-    typeof outerRadius !== "number" ||
-    typeof percent !== "number"
-  ) {
-    return null
-  }
-
-  const RADIAN = Math.PI / 180
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
-  const x = cx + radius * Math.cos(-midAngle * RADIAN)
-  const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-  if (percent < 0.05) return null // Don't show label for very small slices
-
+function ChartTooltip({ active, payload, total }: TooltipContentProps) {
+  if (!active || !payload?.length || !total) return null
+  const row = payload[0]
+  if (!row) return null
+  const pct = ((row.value / total) * 100).toFixed(1)
   return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor={x > cx ? "start" : "end"}
-      dominantBaseline="central"
-      fontSize={12}
-      fontWeight="semibold"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
+    <div className="rounded-md border border-divider bg-surface px-3 py-2 text-sm shadow-md">
+      <p className="font-medium text-foreground">{row.payload.name}</p>
+      <p className="text-default-600">
+        Count:{" "}
+        <span className="font-medium text-foreground">{row.value}</span>
+      </p>
+      <p className="text-default-600">
+        Share:{" "}
+        <span className="font-medium text-foreground">{pct}%</span>
+      </p>
+    </div>
   )
 }
 
 export function PaymentStatusChart() {
   const { data, isLoading } = usePaymentStatusQuery()
 
-  if (isLoading) {
-    return (
-      <Card className="border border-divider">
-        <CardHeader className="px-6 pt-6 pb-0">
-          <Skeleton className="h-6 w-48 rounded-lg" />
-        </CardHeader>
-        <CardBody className="px-6 pb-6">
-          <Skeleton className="h-80 w-full rounded-lg" />
-        </CardBody>
-      </Card>
-    )
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <Card className="border border-divider">
-        <CardHeader className="px-6 pt-6 pb-0">
-          <h3 className="text-lg font-semibold">Payment Status Distribution</h3>
-        </CardHeader>
-        <CardBody className="px-6 pb-6">
-          <div className="flex h-80 items-center justify-center text-default-500">
-            No data available
-          </div>
-        </CardBody>
-      </Card>
-    )
-  }
-
-  const total = data.reduce(
-    (sum: number, item: PaymentStatusData) => sum + item.value,
-    0
+  const total = useMemo(
+    () => (data ?? []).reduce((s, d) => s + d.value, 0),
+    [data]
   )
 
+  const dataWithColors = useMemo(() => {
+    if (!data?.length) return []
+    return data.map((d, i) => ({
+      ...d,
+      fill: chartSeriesColors[i % chartSeriesColors.length]
+    }))
+  }, [data])
+
+  if (isLoading) {
+    return (
+      <Card className={CHART_CARD_CLASS}>
+        <CardHeader className="border-b border-divider/40 px-4 py-3">
+          <Skeleton className="h-5 w-56 rounded" />
+        </CardHeader>
+        <Card.Content className="px-4 pb-4 pt-2">
+          <Skeleton className="h-[260px] w-full rounded-lg" />
+        </Card.Content>
+      </Card>
+    )
+  }
+
+  if (!data || data.length === 0 || total === 0) {
+    return (
+      <Card className={CHART_CARD_CLASS}>
+        <CardHeader className="border-b border-divider/40 px-4 py-3">
+          <h3 className="text-base font-semibold">Payment status</h3>
+        </CardHeader>
+        <Card.Content className="px-4 pb-4 pt-2">
+          <div className="flex h-[260px] items-center justify-center text-sm text-default-500">
+            No invoice data yet
+          </div>
+        </Card.Content>
+      </Card>
+    )
+  }
+
   return (
-    <Card className="border border-divider">
-      <CardHeader className="flex flex-col items-start px-6 pt-6 pb-0">
-        <h3 className="text-lg font-semibold">Payment Status Distribution</h3>
-        <p className="text-sm text-default-500">
-          Breakdown of invoice payment statuses
-        </p>
+    <Card className={CHART_CARD_CLASS}>
+      <CardHeader className="border-b border-divider/40 px-4 py-3">
+        <h3 className="text-base font-semibold">Payment status</h3>
+        <p className="text-xs text-default-500">Share of invoices by status</p>
       </CardHeader>
-      <CardBody className="px-6 pb-6">
-        <ResponsiveContainer width="100%" height={320}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={renderCustomLabel}
-              outerRadius={100}
-              innerRadius={50}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {data.map((entry: PaymentStatusData, index: number) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip total={total} />} />
-            <Legend
-              verticalAlign="bottom"
-              height={36}
-              formatter={(value: string) => (
-                <span className="text-sm text-default-600">{value}</span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </CardBody>
+      <Card.Content className="px-2 pb-3 pt-1 sm:px-4">
+        <div className={cn("h-[260px] w-full min-w-0", CHART_OUTLINE_RESET)}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={dataWithColors}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius="52%"
+                outerRadius="78%"
+                paddingAngle={2}
+                stroke={chartTheme.surface}
+                strokeWidth={2}
+              >
+                {dataWithColors.map((entry, index) => (
+                  <Cell key={`cell-${entry.name}-${index}`} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Tooltip content={<ChartTooltip total={total} />} />
+              <Legend
+                verticalAlign="bottom"
+                height={28}
+                formatter={(value) => (
+                  <span className="text-xs text-default-600">{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </Card.Content>
     </Card>
   )
 }

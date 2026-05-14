@@ -19,8 +19,8 @@ export function formatDate(date: Date | string) {
   }).format(new Date(date))
 }
 
-export function generateSKU() {
-  return `SKU-${Math.random().toString(36).substring(2, 15)}`
+export function formatProductSku(sequenceNumber: number) {
+  return `SKU-${sequenceNumber.toString().padStart(6, "0")}`
 }
 
 export function generateInvoiceId(sequenceNumber: number): string {

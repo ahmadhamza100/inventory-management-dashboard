@@ -28,6 +28,7 @@ import {
   rectSortingStrategy,
   useSortable
 } from "@dnd-kit/sortable"
+import { restrictToParentElement } from "@dnd-kit/modifiers"
 import { CSS } from "@dnd-kit/utilities"
 import type { ProductSchema } from "@/validations/product"
 
@@ -41,11 +42,13 @@ interface ImageItem {
 function SortableImageCard({
   item,
   onRemove,
-  disabled
+  disabled,
+  showCover = false
 }: {
   item: ImageItem
   onRemove: (id: string) => void
   disabled: boolean
+  showCover?: boolean
 }) {
   const {
     attributes,
@@ -82,12 +85,18 @@ function SortableImageCard({
 
       {item.isUploading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
-          <Spinner size="md" color="white" />
+          <Spinner size="md" color="current" />
         </div>
       )}
 
       {!item.isUploading && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+
+      {showCover && !item.isUploading && (
+        <span className="absolute bottom-1.5 left-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+          Cover
+        </span>
       )}
 
       {!item.isUploading && !disabled && (
@@ -110,7 +119,7 @@ function SortableImageCard({
             type="button"
             isIconOnly
             size="sm"
-            variant="solid"
+            variant="ghost"
             onPress={() => onRemove(item.id)}
             aria-label="Remove image"
             className={cn(
@@ -139,6 +148,7 @@ export function ProductImageInput() {
   // Sync form value → local state on mount / reset
   useEffect(() => {
     if (!imagesValue) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- merge RHF `images` resets with upload queue state
     setItems((prev) => {
       // Keep uploading items, sync completed ones from form value
       const uploadingItems = prev.filter((item) => item.isUploading)
@@ -315,7 +325,6 @@ export function ProductImageInput() {
         }
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
 
   return (
@@ -333,7 +342,7 @@ export function ProductImageInput() {
             className="text-sm font-medium text-foreground"
           >
             Product Images{" "}
-            <span className="text-default-400">(Optional)</span>
+            <span className="text-muted">(Optional)</span>
           </label>
 
           {/* Dropzone */}
@@ -357,8 +366,8 @@ export function ProductImageInput() {
               className={cn(
                 "flex items-center justify-center rounded-full transition-colors",
                 items.length > 0 ? "h-10 w-10" : "h-14 w-14",
-                "bg-default-100 text-default-400",
-                "group-hover:bg-primary/15 group-hover:text-primary",
+                "bg-default-100 text-muted",
+                "group-hover:bg-primary/10 group-hover:text-primary",
                 { "bg-primary/15 text-primary": isDragActive },
                 { "bg-danger/15 text-danger": isDragReject || imagesError }
               )}
@@ -366,10 +375,13 @@ export function ProductImageInput() {
               {isDragActive && !isDragReject ? (
                 <IconUpload
                   size={items.length > 0 ? 18 : 24}
-                  className="animate-bounce"
+                  className="animate-bounce text-current"
                 />
               ) : (
-                <IconPhoto size={items.length > 0 ? 18 : 24} />
+                <IconPhoto
+                  size={items.length > 0 ? 18 : 24}
+                  className="text-current"
+                />
               )}
             </div>
             <div className="text-center">
@@ -393,27 +405,25 @@ export function ProductImageInput() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              modifiers={[restrictToParentElement]}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
                 items={items.map((i) => i.id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+                <div className="relative isolate min-w-0 overflow-hidden rounded-lg">
+                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
                   {items.map((item, index) => (
-                    <div key={item.id} className="relative">
-                      <SortableImageCard
-                        item={item}
-                        onRemove={removeImage}
-                        disabled={isPending}
-                      />
-                      {index === 0 && !item.isUploading && (
-                        <span className="absolute bottom-1.5 left-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                          Cover
-                        </span>
-                      )}
-                    </div>
+                    <SortableImageCard
+                      key={item.id}
+                      item={item}
+                      onRemove={removeImage}
+                      disabled={isPending}
+                      showCover={index === 0}
+                    />
                   ))}
+                  </div>
                 </div>
               </SortableContext>
             </DndContext>

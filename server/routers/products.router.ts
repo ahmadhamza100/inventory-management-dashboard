@@ -3,7 +3,7 @@ import { db } from "@/db"
 import { and, eq, isNull } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { productSchema } from "@/validations/product"
-import { generateSKU } from "@/utils/helpers"
+import { allocateNextProductSku } from "@/server/lib/allocate-product-sku"
 import { products } from "@/db/schema"
 import { deleteImagesFromStorage } from "@/utils/supabase/storage"
 
@@ -21,12 +21,16 @@ export const productsRouter = new Hono()
   .post("/", zValidator("json", productSchema), async (c) => {
     const adminId = c.get("adminId")
     const { price, images, ...data } = c.req.valid("json")
-    await db.insert(products).values({
-      ...data,
-      adminId,
-      images,
-      sku: generateSKU(),
-      price: price.toString()
+
+    await db.transaction(async (tx) => {
+      const sku = await allocateNextProductSku(tx, adminId)
+      await tx.insert(products).values({
+        ...data,
+        adminId,
+        images,
+        sku,
+        price: price.toString()
+      })
     })
 
     return c.json(null, 201)

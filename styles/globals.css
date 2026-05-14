@@ -1,11 +1,435 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 @config "../tailwind.config.ts";
 
+/**
+ * Light theme: soft gray canvas (`--background`), slightly lifted `--surface` cards.
+ * Fields use `--field-background` with **no stroke** in light mode (ring on focus from HeroUI).
+ * @see https://www.heroui.com/docs/react/getting-started/colors
+ */
 @layer base {
-  body {
-    @apply bg-background text-foreground selection:bg-primary/10 selection:text-primary;
+  :root:not(.dark):not([data-theme="dark"]),
+  .light,
+  .default,
+  [data-theme="light"],
+  [data-theme="default"] {
+    /* Page canvas — soft gray; inputs keep contrast via --field-* → surface-secondary */
+    --background: oklch(0.97 0.004 286);
+    /* Cards, table body cells, raised panels */
+    --surface: oklch(0.985 0.0035 286);
+    /* Modals / drawers */
+    --overlay: oklch(0.992 0.003 286);
   }
+
+  body {
+    @apply bg-background text-foreground dark:bg-background;
+  }
+
   button:not(:disabled) {
     @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  /*
+   * Light theme fields: default HeroUI inputs read as white on a white page.
+   * Point field tokens at `surface-secondary` + border so controls stay visible.
+   * Dark theme keeps values from `@heroui/styles` / variables.
+   */
+  :root:not(.dark):not([data-theme="dark"]),
+  .light,
+  .default,
+  [data-theme="light"],
+  [data-theme="default"] {
+    --field-background: var(--surface-secondary);
+    --field-foreground: var(--foreground);
+    --field-placeholder: var(--muted);
+    /* No stroke on fields in light mode — surface + shadow + focus ring only */
+    --field-border: transparent;
+    --field-border-width: 0px;
+  }
+
+  /*
+   * Primary table shell: HeroUI uses horizontal + bottom inset only; add top so
+   * the surface-secondary frame is even on all sides (loading overlay / border look).
+   */
+  .table-root--primary {
+    @apply pt-1;
+  }
+
+  /*
+   * App drawer shells (filters, invoice details, etc.): strip default drawer body
+   * gutter so scrollbars hug the panel edge.
+   */
+  [data-app-drawer-shell] [data-slot="drawer-body"] {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  [data-app-drawer-shell] .drawer__header + .drawer__body,
+  [data-app-drawer-shell] .drawer__body + .drawer__footer {
+    margin-top: 0 !important;
+  }
+
+  /*
+   * Modals: HeroUI’s modal container defaults to p-4 / sm:p-10, which adds a lot
+   * of empty space under short confirmation dialogs. Use smaller, even insets.
+   */
+  [data-slot="modal-container"] {
+    @apply !p-4 sm:!p-6;
+  }
+
+  [data-slot="modal-dialog"] {
+    @apply !p-4 sm:!p-5;
+  }
+
+  /*
+   * Outside scroll: top-align the dialog inside the scrollport. `justify-center`
+   * vertically centered tall dialogs so the header was clipped above the viewport.
+   */
+  [data-slot="modal-container"].modal__container--scroll-outside {
+    @apply min-h-0 min-w-0 justify-start;
+    /*
+     * HeroUI sets `pointer-events-auto` on scroll-outside containers. The container
+     * is full-viewport height, so it sits ON TOP of the dimmed backdrop and swallows
+     * underlay clicks — dismiss feels broken and focus/z-order can “cross” oddly.
+     * Let clicks pass through the shell; re-enable hits on each direct child
+     * (dialog, dismiss control, etc.).
+     */
+    pointer-events: none !important;
+  }
+
+  [data-slot="modal-container"].modal__container--scroll-outside > * {
+    pointer-events: auto;
+  }
+
+  /* Backdrop: don’t vertically center the scroll-outside shell (same clipping issue). */
+  [data-slot="modal-backdrop"]:has(
+      [data-slot="modal-container"].modal__container--scroll-outside
+    ) {
+    @apply items-start justify-center;
+  }
+
+  [data-slot="modal-container"].modal__container--scroll-outside
+    > [data-slot="modal-dialog"] {
+    @apply min-w-0;
+    /*
+     * HeroUI default: `data-placement="auto"` → `mt-auto` on small screens (sheet-style).
+     * That shoves the dialog down so the header/title/close sit above the first paint —
+     * looks “shaved off” until you scroll. Scroll-outside must start flush to the top.
+     */
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  [data-slot="modal-dialog"] > [data-slot="modal-body"] {
+    @apply min-w-0;
+  }
+
+  /* Narrow viewports: cap dialog width to the screen; sm+ uses HeroUI size max-width. */
+  @media (max-width: 639.98px) {
+    [data-slot="modal-dialog"] {
+      max-width: calc(100vw - 2rem);
+      width: 100%;
+    }
+  }
+
+  /*
+   * Secondary table: clip the whole block to one radius so loading overlays and
+   * inner surfaces don’t show sharp corners past the card shape.
+   */
+  .table-root--secondary {
+    border-radius: min(32px, var(--radius-2xl));
+    overflow: clip;
+  }
+
+  /* Row hover wash — neutralize (selection / drop target unchanged). */
+  @media (hover: hover) {
+    .table-root--secondary
+      .table__body
+      .table__row:hover:not([data-selected="true"]):not([data-drop-target="true"])
+      .table__cell,
+    .table-root--secondary
+      .table__body
+      .table__row[data-hovered="true"]:not([data-selected="true"]):not(
+        [data-drop-target="true"]
+      )
+      .table__cell {
+      background-color: transparent;
+    }
+
+    .table-root--primary
+      .table__body
+      .table__row:hover:not([data-selected="true"]):not([data-drop-target="true"])
+      .table__cell,
+    .table-root--primary
+      .table__body
+      .table__row[data-hovered="true"]:not([data-selected="true"]):not(
+        [data-drop-target="true"]
+      )
+      .table__cell {
+      background-color: var(--color-surface);
+    }
+  }
+
+  .table-root--secondary
+    .table__body
+    .table__row:not([data-selected="true"]):not([data-drop-target="true"])
+    .table__cell:hover,
+  .table-root--secondary
+    .table__body
+    .table__row:not([data-selected="true"]):not([data-drop-target="true"])
+    .table__cell[data-hovered="true"] {
+    background-color: transparent;
+  }
+
+  .table-root--primary
+    .table__body
+    .table__row:not([data-selected="true"]):not([data-drop-target="true"])
+    .table__cell:hover,
+  .table-root--primary
+    .table__body
+    .table__row:not([data-selected="true"]):not([data-drop-target="true"])
+    .table__cell[data-hovered="true"] {
+    background-color: var(--color-surface);
+  }
+
+  /* Column headers: no hover background change (sortable still gets text emphasis from HeroUI). */
+  .table-root--secondary .table__header .table__column:hover,
+  .table-root--secondary .table__header .table__column[data-hovered="true"] {
+    background-color: var(--color-surface-secondary);
+  }
+
+  .table-root--primary .table__header .table__column:hover,
+  .table-root--primary .table__header .table__column[data-hovered="true"] {
+    background-color: var(--color-surface-secondary);
+  }
+
+  .table__header .table__column:not([data-allows-sorting="true"]) {
+    cursor: default;
+  }
+
+  /*
+   * Column headers: keep multi-word titles on one line and normal spacing
+   * (avoids odd gaps when the table is squeezing column width).
+   */
+  .table__header .table__column {
+    text-align: left;
+    letter-spacing: normal;
+    word-spacing: normal;
+    white-space: nowrap;
+  }
+
+  /*
+   * Toast — richer variant surfaces (HeroUI defaults keep a neutral card + colored title only).
+   * Targets HeroUI toast slots from `@heroui/styles` (`toast--*` modifiers on `[data-slot="toast"]`).
+   */
+  [data-slot="toast"].toast {
+    @apply border shadow-lg backdrop-blur-sm;
+  }
+
+  /* Success */
+  [data-slot="toast"].toast--success {
+    @apply border-emerald-200/90 bg-emerald-50 text-emerald-950;
+  }
+
+  .dark [data-slot="toast"].toast--success {
+    @apply border-emerald-800/70 bg-emerald-950/90 text-emerald-50;
+  }
+
+  [data-slot="toast"].toast--success .toast__title {
+    @apply text-emerald-800;
+  }
+
+  .dark [data-slot="toast"].toast--success .toast__title {
+    @apply text-emerald-100;
+  }
+
+  [data-slot="toast"].toast--success .toast__description {
+    @apply text-emerald-700/90;
+  }
+
+  .dark [data-slot="toast"].toast--success .toast__description {
+    @apply text-emerald-300/90;
+  }
+
+  [data-slot="toast"].toast--success .toast__indicator {
+    @apply text-emerald-600;
+  }
+
+  .dark [data-slot="toast"].toast--success .toast__indicator {
+    @apply text-emerald-400;
+  }
+
+  [data-slot="toast"].toast--success .toast__close-button {
+    @apply border-emerald-200/80 bg-emerald-100/80 text-emerald-900;
+  }
+
+  .dark [data-slot="toast"].toast--success .toast__close-button {
+    @apply border-emerald-800/60 bg-emerald-900/80 text-emerald-100;
+  }
+
+  /* Danger */
+  [data-slot="toast"].toast--danger {
+    @apply border-red-200/90 bg-red-50 text-red-950;
+  }
+
+  .dark [data-slot="toast"].toast--danger {
+    @apply border-red-900/60 bg-red-950/90 text-red-50;
+  }
+
+  [data-slot="toast"].toast--danger .toast__title {
+    @apply text-red-800;
+  }
+
+  .dark [data-slot="toast"].toast--danger .toast__title {
+    @apply text-red-100;
+  }
+
+  [data-slot="toast"].toast--danger .toast__description {
+    @apply text-red-700/90;
+  }
+
+  .dark [data-slot="toast"].toast--danger .toast__description {
+    @apply text-red-300/90;
+  }
+
+  [data-slot="toast"].toast--danger .toast__indicator {
+    @apply text-red-600;
+  }
+
+  .dark [data-slot="toast"].toast--danger .toast__indicator {
+    @apply text-red-400;
+  }
+
+  [data-slot="toast"].toast--danger .toast__close-button {
+    @apply border-red-200/80 bg-red-100/80 text-red-900;
+  }
+
+  .dark [data-slot="toast"].toast--danger .toast__close-button {
+    @apply border-red-900/50 bg-red-900/80 text-red-100;
+  }
+
+  /* Warning */
+  [data-slot="toast"].toast--warning {
+    @apply border-amber-200/90 bg-amber-50 text-amber-950;
+  }
+
+  .dark [data-slot="toast"].toast--warning {
+    @apply border-amber-800/60 bg-amber-950/90 text-amber-50;
+  }
+
+  [data-slot="toast"].toast--warning .toast__title {
+    @apply text-amber-900;
+  }
+
+  .dark [data-slot="toast"].toast--warning .toast__title {
+    @apply text-amber-100;
+  }
+
+  [data-slot="toast"].toast--warning .toast__description {
+    @apply text-amber-800/90;
+  }
+
+  .dark [data-slot="toast"].toast--warning .toast__description {
+    @apply text-amber-300/90;
+  }
+
+  [data-slot="toast"].toast--warning .toast__indicator {
+    @apply text-amber-600;
+  }
+
+  .dark [data-slot="toast"].toast--warning .toast__indicator {
+    @apply text-amber-400;
+  }
+
+  [data-slot="toast"].toast--warning .toast__close-button {
+    @apply border-amber-200/80 bg-amber-100/80 text-amber-950;
+  }
+
+  .dark [data-slot="toast"].toast--warning .toast__close-button {
+    @apply border-amber-800/50 bg-amber-900/80 text-amber-50;
+  }
+
+  /* Info / accent */
+  [data-slot="toast"].toast--accent {
+    @apply border-sky-200/90 bg-sky-50 text-sky-950;
+  }
+
+  .dark [data-slot="toast"].toast--accent {
+    @apply border-sky-800/60 bg-sky-950/90 text-sky-50;
+  }
+
+  [data-slot="toast"].toast--accent .toast__title {
+    @apply text-sky-900;
+  }
+
+  .dark [data-slot="toast"].toast--accent .toast__title {
+    @apply text-sky-100;
+  }
+
+  [data-slot="toast"].toast--accent .toast__description {
+    @apply text-sky-800/90;
+  }
+
+  .dark [data-slot="toast"].toast--accent .toast__description {
+    @apply text-sky-300/90;
+  }
+
+  [data-slot="toast"].toast--accent .toast__indicator {
+    @apply text-sky-600;
+  }
+
+  .dark [data-slot="toast"].toast--accent .toast__indicator {
+    @apply text-sky-400;
+  }
+
+  [data-slot="toast"].toast--accent .toast__close-button {
+    @apply border-sky-200/80 bg-sky-100/80 text-sky-950;
+  }
+
+  .dark [data-slot="toast"].toast--accent .toast__close-button {
+    @apply border-sky-800/50 bg-sky-900/80 text-sky-50;
+  }
+
+  /* Default / loading */
+  [data-slot="toast"].toast--default {
+    @apply border-zinc-200/90 bg-zinc-50 text-zinc-950;
+  }
+
+  .dark [data-slot="toast"].toast--default {
+    @apply border-zinc-700/60 bg-zinc-900/85 text-zinc-50;
+  }
+
+  [data-slot="toast"].toast--default .toast__title {
+    @apply text-zinc-900;
+  }
+
+  .dark [data-slot="toast"].toast--default .toast__title {
+    @apply text-zinc-50;
+  }
+
+  [data-slot="toast"].toast--default .toast__description {
+    @apply text-zinc-600;
+  }
+
+  .dark [data-slot="toast"].toast--default .toast__description {
+    @apply text-zinc-400;
+  }
+
+  [data-slot="toast"].toast--default .toast__indicator {
+    @apply text-zinc-500;
+  }
+
+  .dark [data-slot="toast"].toast--default .toast__indicator {
+    @apply text-zinc-400;
+  }
+
+  [data-slot="toast"].toast--default .toast__close-button {
+    @apply border-zinc-200/90 bg-white text-zinc-900;
+  }
+
+  .dark [data-slot="toast"].toast--default .toast__close-button {
+    @apply border-zinc-600/80 bg-zinc-800 text-zinc-100;
   }
 }

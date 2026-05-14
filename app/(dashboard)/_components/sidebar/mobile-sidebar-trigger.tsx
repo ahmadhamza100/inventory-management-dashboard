@@ -11,7 +11,7 @@ export function MobileSidebarTrigger({ onPress }: MobileSidebarTriggerProps) {
   return (
     <Button
       isIconOnly
-      variant="light"
+      variant="ghost"
       size="sm"
       onPress={onPress}
       aria-label="Open menu"

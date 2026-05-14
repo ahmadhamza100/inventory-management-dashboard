@@ -16,7 +16,9 @@ export function Logo({ href = "/", className, showText = false }: LogoProps) {
     >
       <IconInnerShadowTop className="text-primary" size={24} />
       {showText && (
-        <span className="text-lg font-semibold tracking-tight">Dashboard</span>
+        <span className="text-lg font-semibold tracking-tight text-foreground">
+          Dashboard
+        </span>
       )}
     </Link>
   )

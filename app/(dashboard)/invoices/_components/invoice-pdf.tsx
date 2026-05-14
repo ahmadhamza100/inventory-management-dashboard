@@ -226,6 +226,8 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.logoContainer}>
+              {/* Logo is decorative in the PDF */}
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image src="/logo.jpeg" style={styles.logo} />
               <Text style={styles.businessTagline}>
                 Deals in Laparoscope, Urology, ENT,{"\n"}

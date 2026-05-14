@@ -1,18 +1,18 @@
 "use client"
 
+import { useCallback, useMemo } from "react"
 import { Link } from "@/components/link"
 import { loginSchema } from "@/validations/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { addToast, Button, Input } from "@heroui/react"
+import { Button, Input, TextField, FieldError, toast } from "@heroui/react"
 import { Logo } from "@/components/logo"
-import { PasswordInput } from "@/components/password-input"
 import { createClient } from "@/utils/supabase/client"
 import { ROUTES } from "@/utils/routes"
 import { FormError } from "@/components/form-error"
 
 export default function LoginPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -22,23 +22,34 @@ export default function LoginPage() {
     }
   })
 
-  const onSubmit = form.handleSubmit(async (data) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password
-    })
-
-    if (error) {
-      form.setError("root", { message: error?.message })
-    } else {
-      addToast({
-        title: "Login successful",
-        color: "success"
+  const onSubmit = useCallback(
+    async (data: { email: string; password: string }) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password
       })
 
-      window?.location?.replace(ROUTES.dashboard)
+      if (error) {
+        form.setError("root", { message: error?.message })
+      } else {
+        toast.success("Login successful")
+        window?.location?.replace(ROUTES.dashboard)
+      }
+    },
+    [form, supabase]
+  )
+
+  const submit = useCallback(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) {
+      active.blur()
     }
-  })
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void form.handleSubmit(onSubmit)()
+      })
+    })
+  }, [form, onSubmit])
 
   const isSubmitting = form.formState.isSubmitting
 
@@ -46,26 +57,41 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       <header className="space-y-2 text-center">
         <Logo href="/login" className="mx-auto size-10 text-foreground" />
-        <h1 className="text-xl font-semibold">Sign in to your account</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          Sign in to your account
+        </h1>
       </header>
 
-      <form onSubmit={onSubmit} className="mt-8 mb-6 flex flex-col gap-4">
+      <form
+        className="mt-8 mb-6 flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        noValidate
+      >
         <FormError form={form} />
 
         <Controller
           control={form.control}
           name="email"
           render={({ field, fieldState }) => (
-            <Input
-              {...field}
-              type="email"
-              label="Email"
-              isDisabled={isSubmitting}
-              labelPlacement="outside"
-              placeholder="you@example.com"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
-            />
+              isDisabled={isSubmitting}
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                aria-label="Email"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
@@ -73,30 +99,42 @@ export default function LoginPage() {
           control={form.control}
           name="password"
           render={({ field, fieldState }) => (
-            <PasswordInput
-              {...field}
-              label="Password"
-              isDisabled={isSubmitting}
-              labelPlacement="outside"
-              placeholder="••••••••"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
-            />
+              isDisabled={isSubmitting}
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input
+                type="password"
+                placeholder="••••••••"
+                aria-label="Password"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
         <Button
           type="submit"
-          color="primary"
+          variant="primary"
           className="w-full"
-          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
         >
-          Continue
+          {isSubmitting ? "Signing in…" : "Continue"}
         </Button>
       </form>
 
       <div className="flex items-center justify-center">
-        <Link size="sm" href={ROUTES.resetPassword} isDisabled={isSubmitting}>
+        <Link
+          className="text-sm"
+          href={ROUTES.resetPassword}
+          aria-disabled={isSubmitting}
+          tabIndex={isSubmitting ? -1 : undefined}
+        >
           Forgot your password?
         </Link>
       </div>

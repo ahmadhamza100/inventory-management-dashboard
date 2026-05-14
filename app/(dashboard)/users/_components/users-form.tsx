@@ -1,10 +1,18 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { api } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query"
-import { Button, Input, addToast } from "@heroui/react"
+import {
+  Button,
+  TextField,
+  Input,
+  FieldError,
+  Spinner,
+  toast,
+  cn
+} from "@heroui/react"
 import { useUserModalStore } from "@/stores/use-user-modal-store"
 import { gerErrorMessage } from "@/utils/error-handler"
 import { FormError } from "@/components/form-error"
@@ -38,65 +46,84 @@ export function UsersForm() {
     defaultValues
   })
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      if (isEditing) {
-        await api.users[":id"].$patch({
-          json: values as UpdateUserSchema,
-          param: { id: user?.id }
-        })
-        addToast({
-          title: "User updated successfully",
-          color: "success"
-        })
-      } else {
-        await api.users.$post({ json: values as CreateUserSchema })
-        addToast({
-          title: "User created successfully",
-          color: "success"
+  const onSubmit = useCallback(
+    async (values: FormSchema) => {
+      try {
+        if (isEditing) {
+          await api.users[":id"].$patch({
+            json: values as UpdateUserSchema,
+            param: { id: user?.id }
+          })
+          toast.success("User updated successfully")
+        } else {
+          await api.users.$post({ json: values as CreateUserSchema })
+          toast.success("User created successfully")
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["users"] })
+        onClose()
+      } catch (error) {
+        form.setError("root", {
+          message: gerErrorMessage(
+            error,
+            isEditing ? "Failed to update user" : "Failed to create user"
+          )
         })
       }
-
-      queryClient.invalidateQueries({ queryKey: ["users"] })
-      onClose()
-    } catch (error) {
-      form.setError("root", {
-        message: gerErrorMessage(
-          error,
-          isEditing ? "Failed to update user" : "Failed to create user"
-        )
-      })
-    }
-  })
+    },
+    [form, isEditing, onClose, queryClient, user]
+  )
 
   const isPending = form.formState.isSubmitting
 
-  useEffect(() => {
-    return () => {
-      form.reset(defaultValues)
+  const requestSubmitWithBlur = useCallback(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) {
+      active.blur()
     }
-  }, [form, defaultValues])
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void form.handleSubmit(onSubmit)()
+      })
+    })
+  }, [form, onSubmit])
+
+  useEffect(() => {
+    form.reset(defaultValues)
+  }, [defaultValues, form])
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6">
+    <form
+      className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+      onSubmit={(e) => {
+        e.preventDefault()
+        requestSubmitWithBlur()
+      }}
+      noValidate
+    >
       <FormError form={form} />
 
       <Controller
         control={form.control}
         name="email"
         render={({ field, fieldState }) => (
-          <Input
-            {...field}
-            type="email"
-            value={field.value}
-            onValueChange={field.onChange}
-            label="Email"
-            labelPlacement="outside"
-            placeholder="Enter email address"
+          <TextField
             isInvalid={fieldState.invalid}
-            errorMessage={fieldState.error?.message}
             isDisabled={isPending}
-          />
+            name={field.name}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+            value={field.value}
+            ref={field.ref}
+            type="email"
+          >
+            <Input
+              type="email"
+              placeholder="Enter email address"
+              aria-label="Email"
+            />
+            <FieldError>{fieldState.error?.message}</FieldError>
+          </TextField>
         )}
       />
 
@@ -104,18 +131,18 @@ export function UsersForm() {
         control={form.control}
         name="name"
         render={({ field, fieldState }) => (
-          <Input
-            {...field}
-            type="text"
-            value={field.value}
-            onValueChange={field.onChange}
-            label="Name"
-            labelPlacement="outside"
-            placeholder="Enter full name"
+          <TextField
             isInvalid={fieldState.invalid}
-            errorMessage={fieldState.error?.message}
             isDisabled={isPending}
-          />
+            name={field.name}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+            value={field.value}
+            ref={field.ref}
+          >
+            <Input placeholder="Enter full name" aria-label="Name" />
+            <FieldError>{fieldState.error?.message}</FieldError>
+          </TextField>
         )}
       />
 
@@ -124,33 +151,48 @@ export function UsersForm() {
           control={form.control}
           name="password"
           render={({ field, fieldState }) => (
-            <Input
-              {...field}
-              type="password"
-              value={field.value || ""}
-              onValueChange={field.onChange}
-              label="Password"
-              labelPlacement="outside"
-              placeholder="Enter password"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isPending}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value ?? ""}
+              ref={field.ref}
+            >
+              <Input
+                type="password"
+                placeholder="Enter password"
+                aria-label="Password"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
       )}
 
-      <div className="flex justify-end gap-3">
+      <div
+        className={cn(
+          "mt-6 flex min-w-0 flex-wrap justify-end gap-3 border-t border-divider",
+          "bg-overlay px-4 py-4 sm:px-5"
+        )}
+      >
         <Button
           type="button"
-          variant="flat"
+          variant="secondary"
           onPress={onClose}
           isDisabled={isPending}
         >
           Cancel
         </Button>
-        <Button type="submit" color="primary" isLoading={isPending}>
-          {isEditing ? "Update User" : "Create User"}
+        <Button type="submit" variant="primary" isDisabled={isPending}>
+          {isPending ? (
+            <Spinner size="sm" color="current" />
+          ) : isEditing ? (
+            "Update User"
+          ) : (
+            "Create User"
+          )}
         </Button>
       </div>
     </form>

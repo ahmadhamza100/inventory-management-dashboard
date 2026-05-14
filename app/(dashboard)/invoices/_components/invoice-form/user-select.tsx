@@ -1,80 +1,55 @@
-"use client";
+"use client"
 
-import { useState, useMemo } from "react";
-import { useCustomersQuery } from "@/queries/use-customers-query";
-import { Autocomplete, AutocompleteItem } from "@heroui/react";
-import { useFormContext, Controller, useWatch } from "react-hook-form";
-import type { InvoiceSchema } from "@/validations/invoice";
+import { useCustomersQuery } from "@/queries/use-customers-query"
+import { FieldError } from "@heroui/react"
+import { useFormContext, Controller } from "react-hook-form"
+import type { InvoiceSchema } from "@/validations/invoice"
+import { SearchableEntityList } from "@/components/searchable-entity-list"
+import type { Customer } from "@/db/schema"
 
 export function UserSelect() {
-	const { data: customers } = useCustomersQuery();
-	const form = useFormContext<InvoiceSchema>();
-	const [customerSearchValue, setCustomerSearchValue] = useState("");
+  const { data: customers } = useCustomersQuery()
+  const form = useFormContext<InvoiceSchema>()
+  const isDisabled = form.formState.isSubmitting
 
-	const customerId = useWatch({ control: form.control, name: "customerId" });
-
-	const customerInputValue = useMemo(() => {
-		if (customerId && customers) {
-			const selectedCustomer = customers.find((c) => c.id === customerId);
-			return selectedCustomer?.name || customerSearchValue;
-		}
-		return customerSearchValue;
-	}, [customerId, customers, customerSearchValue]);
-
-	const isDisabled = form.formState.isSubmitting;
-
-	return (
-		<Controller
-			control={form.control}
-			name="customerId"
-			render={({ field, fieldState }) => (
-				<Autocomplete
-					label="Customer"
-					placeholder="Select customer"
-					defaultItems={customers || []}
-					selectedKey={field.value || null}
-					itemHeight={50}
-					onSelectionChange={(key) => {
-						field.onChange(key ? String(key) : "");
-					}}
-					inputValue={customerInputValue}
-					onInputChange={setCustomerSearchValue}
-					allowsCustomValue={false}
-					labelPlacement="outside"
-					isClearable
-					isInvalid={fieldState.invalid}
-					errorMessage={fieldState.error?.message}
-					isDisabled={isDisabled}
-					onClear={() => {
-						field.onChange("");
-						setCustomerSearchValue("");
-					}}
-				>
-					{(customer) => {
-						const searchableText = [
-							customer.name,
-							customer.email,
-							customer.phone,
-							customer.address,
-						]
-							.filter(Boolean)
-							.join(" ");
-
-						return (
-							<AutocompleteItem key={customer.id} textValue={searchableText}>
-								<div className="flex flex-col">
-									<span className="text-small">{customer.name}</span>
-									{customer.email && (
-										<span className="text-tiny text-default-400">
-											{customer.email}
-										</span>
-									)}
-								</div>
-							</AutocompleteItem>
-						);
-					}}
-				</Autocomplete>
-			)}
-		/>
-	);
+  return (
+    <Controller
+      control={form.control}
+      name="customerId"
+      render={({ field, fieldState }) => (
+        <div className="flex flex-col gap-1">
+          <SearchableEntityList<Customer>
+            label="Customer"
+            items={customers}
+            isLoading={customers === undefined}
+            isDisabled={isDisabled}
+            selectedId={field.value || undefined}
+            onSelect={(id) => field.onChange(id)}
+            getItemId={(c) => c.id}
+            getTextValue={(c) =>
+              [c.name, c.email, c.phone, c.address].filter(Boolean).join(" ")
+            }
+            getSelectedSummary={(c) => c.name}
+            searchPlaceholder="Search customers…"
+            searchAriaLabel="Search customers"
+            listAriaLabel="Customers"
+            emptyNoData="No customers found"
+            emptyNoMatch="No customers match your search"
+            listMaxHeightClassName="max-h-52"
+            renderItem={(customer) => (
+              <div className="flex flex-col py-0.5">
+                <span className="text-small">{customer.name}</span>
+                {customer.email ? (
+                  <span className="text-tiny text-default-400">
+                    {customer.email}
+                  </span>
+                ) : null}
+              </div>
+            )}
+          />
+          <FieldError>{fieldState.error?.message}</FieldError>
+        </div>
+      )}
+    />
+  )
 }

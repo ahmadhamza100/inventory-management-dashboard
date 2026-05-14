@@ -1,602 +1,562 @@
-"use client";
+"use client"
 
-import orderBy from "lodash.orderby";
-import filter from "lodash.filter";
-import { useMemo, useCallback, useState } from "react";
-import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store";
-import { useInvoicesQuery } from "@/queries/use-invoices-query";
-import { useCustomersQuery } from "@/queries/use-customers-query";
-import { useProductsQuery } from "@/queries/use-products-query";
-import { formatDate, formatPrice, getPaymentStatus } from "@/utils/helpers";
-import { parseAsString, useQueryStates } from "nuqs";
-import { invoiceSortParser } from "@/utils/sorting-parsers";
-import { useDownloadInvoice } from "@/mutations/use-download-invoice";
-import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter";
-import type { InvoiceWithDetails } from "@/stores/use-invoice-modal-store";
+import orderBy from "lodash.orderby"
+import filter from "lodash.filter"
+import { useMemo, useCallback } from "react"
+import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store"
+import { useInvoicesQuery } from "@/queries/use-invoices-query"
+import { useCustomersQuery } from "@/queries/use-customers-query"
+import { useProductsQuery } from "@/queries/use-products-query"
+import { formatDate, formatPrice, getPaymentStatus } from "@/utils/helpers"
+import { parseAsString, useQueryStates } from "nuqs"
+import { invoiceSortParser } from "@/utils/sorting-parsers"
+import { useDownloadInvoice } from "@/mutations/use-download-invoice"
+import { TableLoadingOverlay } from "@/components/table-loading-overlay"
+import { TableFilterDrawer } from "@/components/table-filter-drawer"
 import {
-	IconSearch,
-	IconAlertTriangle,
-	IconRefresh,
-	IconDotsVertical,
-	IconEye,
-	IconPencil,
-	IconTrash,
-	IconDownload,
-	IconX,
-} from "@tabler/icons-react";
+  InvoiceFiltersForm,
+  type InvoiceFilterDraft
+} from "./invoice-filters-form"
+import type { InvoiceWithDetails } from "@/stores/use-invoice-modal-store"
 import {
-	Table,
-	TableHeader,
-	TableColumn,
-	TableBody,
-	TableRow,
-	TableCell,
-	Input,
-	Spinner,
-	Button,
-	Dropdown,
-	DropdownTrigger,
-	DropdownMenu,
-	DropdownItem,
-	Autocomplete,
-	AutocompleteItem,
-	Select,
-	SelectItem,
-	Chip,
-} from "@heroui/react";
+  IconAlertTriangle,
+  IconRefresh,
+  IconDotsVertical,
+  IconEye,
+  IconPencil,
+  IconTrash,
+  IconDownload,
+  IconPlus
+} from "@tabler/icons-react"
+import {
+  Table,
+  Spinner,
+  Button,
+  Dropdown,
+  SearchField,
+  Chip,
+  cn
+} from "@heroui/react"
+import type { SortDescriptor } from "@heroui/react"
 
 const columns = [
-	{ name: "ID", uid: "id", sortable: true },
-	{ name: "CUSTOMER", uid: "customer", sortable: false },
-	{ name: "PRODUCTS", uid: "products", sortable: false },
-	{ name: "TOTAL", uid: "total", sortable: true },
-	{ name: "PAYMENT STATUS", uid: "paymentStatus", sortable: false },
-	{ name: "AMOUNT PAID", uid: "amountPaid", sortable: false },
-	{ name: "DATE", uid: "createdAt", sortable: true },
-	{ name: "", uid: "actions", sortable: false },
-];
+  { name: "ID", id: "id", sortable: true },
+  { name: "CUSTOMER", id: "customer", sortable: false },
+  { name: "PRODUCTS", id: "products", sortable: false },
+  { name: "TOTAL", id: "total", sortable: true },
+  { name: "PAYMENT STATUS", id: "paymentStatus", sortable: false },
+  { name: "AMOUNT PAID", id: "amountPaid", sortable: false },
+  { name: "DATE", id: "createdAt", sortable: true },
+  { name: "", id: "actions", sortable: false }
+] as const
 
 export function InvoicesTable() {
-	const {
-		data: invoices,
-		isLoading,
-		isError,
-		refetch,
-		isFetching,
-	} = useInvoicesQuery();
-	const { data: customers } = useCustomersQuery();
-	const { data: products } = useProductsQuery();
+  const openInvoiceModal = useInvoiceModalStore((state) => state.onOpen)
+  const {
+    data: invoices,
+    isLoading,
+    isError,
+    refetch,
+    isFetching
+  } = useInvoicesQuery()
+  const { data: customers } = useCustomersQuery()
+  const { data: products } = useProductsQuery()
 
-	const openInvoiceModal = useInvoiceModalStore((state) => state.onOpen);
-	const [
-		{ q, sort, customer, product, paymentStatus, startDate, endDate },
-		setSearchParams,
-	] = useQueryStates({
-		q: parseAsString.withDefault(""),
-		customer: parseAsString.withDefault(""),
-		product: parseAsString.withDefault(""),
-		paymentStatus: parseAsString.withDefault(""),
-		startDate: parseAsString.withDefault(""),
-		endDate: parseAsString.withDefault(""),
-		sort: invoiceSortParser.withDefault({
-			column: "createdAt",
-			direction: "descending",
-		}),
-	});
+  const [
+    { q, sort, customer, product, paymentStatus, startDate, endDate },
+    setSearchParams
+  ] = useQueryStates({
+    q: parseAsString.withDefault(""),
+    customer: parseAsString.withDefault(""),
+    product: parseAsString.withDefault(""),
+    paymentStatus: parseAsString.withDefault(""),
+    startDate: parseAsString.withDefault(""),
+    endDate: parseAsString.withDefault(""),
+    sort: invoiceSortParser.withDefault({
+      column: "createdAt",
+      direction: "descending"
+    })
+  })
 
-	const [customerSearchValue, setCustomerSearchValue] = useState("");
-	const [productSearchValue, setProductSearchValue] = useState("");
+  const filteredItems = useMemo(() => {
+    if (!invoices) return []
 
-	const customerInputValue = useMemo(() => {
-		if (customer && customers) {
-			const selectedCustomer = customers.find((c) => c.id === customer);
-			return selectedCustomer?.name || customerSearchValue;
-		}
-		return customerSearchValue;
-	}, [customer, customers, customerSearchValue]);
+    let filtered = [...invoices]
 
-	const productInputValue = useMemo(() => {
-		if (product && products) {
-			const selectedProduct = products.find((p) => p.id === product);
-			return selectedProduct?.name || productSearchValue;
-		}
-		return productSearchValue;
-	}, [product, products, productSearchValue]);
+    const query = q.trim().toLowerCase()
+    if (query) {
+      filtered = filter(filtered, (invoice) => {
+        const invoiceId = `#${String(invoice.id).toLowerCase()}`
+        const customerName = invoice.customer.name?.toLowerCase() || ""
+        const customerEmail = invoice.customer.email?.toLowerCase() || ""
+        const customerPhone = invoice.customer.phone?.toLowerCase() || ""
+        const productNames = invoice.products
+          .map((p) => p.name?.toLowerCase() || "")
+          .join(" ")
 
-	const filteredItems = useMemo(() => {
-		if (!invoices) return [];
+        return (
+          invoiceId.includes(query) ||
+          customerName.includes(query) ||
+          customerEmail.includes(query) ||
+          customerPhone.includes(query) ||
+          productNames.includes(query)
+        )
+      })
+    }
 
-		let filtered = [...invoices];
+    if (customer) {
+      filtered = filter(filtered, (invoice) => {
+        return invoice.customerId !== null && invoice.customerId === customer
+      })
+    }
 
-		const query = q.trim().toLowerCase();
-		if (query) {
-			filtered = filter(filtered, (invoice) => {
-				const invoiceId = `#${invoice.id.toLowerCase()}` || "";
-				const customerName = invoice.customer.name?.toLowerCase() || "";
-				const customerEmail = invoice.customer.email?.toLowerCase() || "";
-				const customerPhone = invoice.customer.phone?.toLowerCase() || "";
-				const productNames = invoice.products
-					.map((p) => p.name?.toLowerCase() || "")
-					.join(" ");
+    if (product) {
+      const selectedProduct = products?.find((p) => p.id === product)
+      if (selectedProduct) {
+        const filterProductName = selectedProduct.name.trim().toLowerCase()
+        filtered = filter(filtered, (invoice) => {
+          return invoice.products.some(
+            (item) => item.name?.toLowerCase() === filterProductName
+          )
+        })
+      }
+    }
 
-				return (
-					invoiceId.includes(query) ||
-					customerName.includes(query) ||
-					customerEmail.includes(query) ||
-					customerPhone.includes(query) ||
-					productNames.includes(query)
-				);
-			});
-		}
+    if (paymentStatus) {
+      filtered = filter(filtered, (invoice) => {
+        const status = getPaymentStatus(invoice.total, invoice.amountPaid)
+        return status === paymentStatus
+      })
+    }
 
-		if (customer) {
-			filtered = filter(filtered, (invoice) => {
-				return invoice.customerId !== null && invoice.customerId === customer;
-			});
-		}
+    if (startDate) {
+      const start = new Date(startDate)
+      filtered = filter(
+        filtered,
+        (invoice) => new Date(invoice.createdAt) >= start
+      )
+    }
 
-		if (product) {
-			const selectedProduct = products?.find((p) => p.id === product);
-			if (selectedProduct) {
-				const filterProductName = selectedProduct.name.trim().toLowerCase();
-				filtered = filter(filtered, (invoice) => {
-					return invoice.products.some(
-						(item) => item.name?.toLowerCase() === filterProductName,
-					);
-				});
-			}
-		}
+    if (endDate) {
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      filtered = filter(
+        filtered,
+        (invoice) => new Date(invoice.createdAt) <= end
+      )
+    }
 
-		if (paymentStatus) {
-			filtered = filter(filtered, (invoice) => {
-				const status = getPaymentStatus(invoice.total, invoice.amountPaid);
-				return status === paymentStatus;
-			});
-		}
+    return filtered
+  }, [invoices, q, customer, product, paymentStatus, products, startDate, endDate])
 
-		if (startDate) {
-			const start = new Date(startDate);
-			filtered = filter(
-				filtered,
-				(invoice) => new Date(invoice.createdAt) >= start,
-			);
-		}
+  const sortedItems = useMemo(() => {
+    const lodashDirection = sort.direction === "ascending" ? "asc" : "desc"
+    return orderBy(filteredItems, [sort.column], [lodashDirection])
+  }, [filteredItems, sort])
 
-		if (endDate) {
-			const end = new Date(endDate);
-			end.setHours(23, 59, 59, 999);
-			filtered = filter(
-				filtered,
-				(invoice) => new Date(invoice.createdAt) <= end,
-			);
-		}
+  const { downloadInvoice } = useDownloadInvoice()
 
-		return filtered;
-	}, [
-		invoices,
-		q,
-		customer,
-		product,
-		paymentStatus,
-		products,
-		startDate,
-		endDate,
-	]);
+  const renderCell = useCallback(
+    (invoice: InvoiceWithDetails, columnKey: React.Key) => {
+      switch (columnKey) {
+        case "id":
+          return (
+            <button
+              type="button"
+              onClick={() => openInvoiceModal("view", invoice)}
+              className="font-mono text-sm font-medium whitespace-nowrap"
+            >
+              #{invoice.id}
+            </button>
+          )
+        case "customer":
+          return (
+            <div className="min-w-0">
+              <div className="flex flex-col">
+                <span className="truncate text-sm font-medium">
+                  {invoice.customer.name}
+                </span>
+                {invoice.customer.email && (
+                  <span className="truncate text-xs text-default-500">
+                    {invoice.customer.email}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        case "products":
+          return (
+            <div className="min-w-0 max-w-full">
+              {invoice.products.length === 0 ? (
+                <span className="text-xs text-default-400">No products</span>
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                  {invoice.products.map((line, index) => (
+                    <li
+                      key={`${invoice.id}-line-${index}`}
+                      className="min-w-0 max-w-full"
+                    >
+                      <div className="flex min-w-0 max-w-full flex-wrap items-start gap-x-2 gap-y-1">
+                        <span
+                          className="min-w-0 flex-1 text-sm leading-snug font-medium text-foreground break-words"
+                          title={line.name || "Unknown Product"}
+                        >
+                          {line.name || "Unknown Product"}
+                        </span>
+                        <span
+                          className="shrink-0 rounded-md bg-default-200 px-2 py-0.5 text-center text-[11px] leading-none font-semibold whitespace-nowrap text-default-800 tabular-nums dark:bg-default-300/35 dark:text-default-100"
+                          title={`Quantity ${line.quantity}`}
+                        >
+                          ×{line.quantity}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        case "total":
+          return (
+            <span className="block text-sm font-semibold tabular-nums whitespace-nowrap">
+              {formatPrice(invoice.total)}
+            </span>
+          )
+        case "paymentStatus":
+          return (() => {
+            const status = getPaymentStatus(invoice.total, invoice.amountPaid)
+            const statusConfig = {
+              paid: { label: "Paid", color: "success" as const },
+              partially_paid: {
+                label: "Partially Paid",
+                color: "warning" as const
+              },
+              unpaid: { label: "Unpaid", color: "danger" as const }
+            }
+            const config = statusConfig[status]
+            return (
+              <span className="inline-flex max-w-full whitespace-nowrap">
+                <Chip size="sm" color={config.color} variant="soft">
+                  {config.label}
+                </Chip>
+              </span>
+            )
+          })()
+        case "amountPaid":
+          return (
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-600">
+              {formatPrice(invoice.amountPaid)}
+            </span>
+          )
+        case "createdAt":
+          return (
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-500">
+              {formatDate(invoice.createdAt)}
+            </span>
+          )
+        case "actions":
+          return (
+            <Dropdown>
+              <Dropdown.Trigger aria-label="Invoice actions">
+                <IconDotsVertical size={18} />
+              </Dropdown.Trigger>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Invoice actions"
+                  onAction={(key) => {
+                    if (key === "view") openInvoiceModal("view", invoice)
+                    else if (key === "edit")
+                      openInvoiceModal("update", invoice)
+                    else if (key === "download") void downloadInvoice(invoice)
+                    else if (key === "delete") openInvoiceModal("delete", invoice)
+                  }}
+                >
+                  <Dropdown.Item id="view" textValue="View">
+                    <span className="flex items-center gap-2">
+                      <IconEye size={16} />
+                      View
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item id="edit" textValue="Edit">
+                    <span className="flex items-center gap-2">
+                      <IconPencil size={16} />
+                      Edit
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item id="download" textValue="Download">
+                    <span className="flex items-center gap-2">
+                      <IconDownload size={16} />
+                      Download
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="delete"
+                    textValue="Delete"
+                    variant="danger"
+                  >
+                    <span className="flex items-center gap-2">
+                      <IconTrash size={16} />
+                      Delete
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          )
+        default:
+          return null
+      }
+    },
+    [openInvoiceModal, downloadInvoice]
+  )
 
-	const sortedItems = useMemo(() => {
-		const lodashDirection = sort.direction === "ascending" ? "asc" : "desc";
-		return orderBy(filteredItems, [sort.column], lodashDirection);
-	}, [filteredItems, sort]);
+  const totalCount = invoices?.length ?? 0
+  const filteredCount = filteredItems.length
 
-	const { downloadInvoice } = useDownloadInvoice();
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (q.trim()) n += 1
+    if (customer) n += 1
+    if (product) n += 1
+    if (paymentStatus) n += 1
+    if (startDate || endDate) n += 1
+    return n
+  }, [q, customer, product, paymentStatus, startDate, endDate])
 
-	const renderCell = useCallback(
-		(invoice: InvoiceWithDetails, columnKey: React.Key) => {
-			switch (columnKey) {
-				case "id":
-					return (
-						<button
-							type="button"
-							onClick={() => openInvoiceModal("view", invoice)}
-							className="font-mono text-sm font-medium whitespace-nowrap"
-						>
-							#{invoice.id}
-						</button>
-					);
-				case "customer":
-					return (
-						<div className="flex flex-col">
-							<span className="text-sm font-medium">
-								{invoice.customer.name}
-							</span>
-							{invoice.customer.email && (
-								<span className="text-xs text-default-500">
-									{invoice.customer.email}
-								</span>
-							)}
-						</div>
-					);
-				case "products":
-					return (
-						<div className="flex flex-wrap gap-1">
-							{invoice.products.slice(0, 2).map((product, index) => (
-								<Chip key={index} size="sm" variant="flat" className="text-xs">
-									{product.name || "Unknown Product"} ({product.quantity})
-								</Chip>
-							))}
-							{invoice.products.length > 2 && (
-								<Chip size="sm" variant="flat" className="text-xs">
-									+{invoice.products.length - 2} more
-								</Chip>
-							)}
-							{invoice.products.length === 0 && (
-								<span className="text-xs text-default-400">No products</span>
-							)}
-						</div>
-					);
-				case "total":
-					return (
-						<span className="text-sm font-semibold tabular-nums">
-							{formatPrice(invoice.total)}
-						</span>
-					);
-				case "paymentStatus":
-					return (() => {
-						const status = getPaymentStatus(invoice.total, invoice.amountPaid);
-						const statusConfig = {
-							paid: { label: "Paid", color: "success" as const },
-							partially_paid: {
-								label: "Partially Paid",
-								color: "warning" as const,
-							},
-							unpaid: { label: "Unpaid", color: "danger" as const },
-						};
-						const config = statusConfig[status];
-						return (
-							<Chip size="sm" color={config.color} variant="flat">
-								{config.label}
-							</Chip>
-						);
-					})();
-				case "amountPaid":
-					return (
-						<span className="text-sm text-default-600 tabular-nums">
-							{formatPrice(invoice.amountPaid)}
-						</span>
-					);
-				case "createdAt":
-					return (
-						<span className="text-sm whitespace-nowrap text-default-500">
-							{formatDate(invoice.createdAt)}
-						</span>
-					);
-				case "actions":
-					return (
-						<Dropdown>
-							<DropdownTrigger>
-								<Button isIconOnly size="sm" variant="light">
-									<IconDotsVertical size={18} />
-								</Button>
-							</DropdownTrigger>
-							<DropdownMenu aria-label="Invoice actions">
-								<DropdownItem
-									key="view"
-									startContent={<IconEye size={16} />}
-									onPress={() => openInvoiceModal("view", invoice)}
-								>
-									View
-								</DropdownItem>
-								<DropdownItem
-									key="edit"
-									startContent={<IconPencil size={16} />}
-									onPress={() => openInvoiceModal("update", invoice)}
-								>
-									Edit
-								</DropdownItem>
-								<DropdownItem
-									key="download"
-									startContent={<IconDownload size={16} />}
-									onPress={() => downloadInvoice(invoice)}
-								>
-									Download
-								</DropdownItem>
-								<DropdownItem
-									key="delete"
-									color="danger"
-									className="text-danger"
-									startContent={<IconTrash size={16} />}
-									onPress={() => openInvoiceModal("delete", invoice)}
-								>
-									Delete
-								</DropdownItem>
-							</DropdownMenu>
-						</Dropdown>
-					);
-				default:
-					return null;
-			}
-		},
-		[openInvoiceModal, downloadInvoice],
-	);
+  const committedFilters = useMemo(
+    (): InvoiceFilterDraft => ({
+      customer,
+      product,
+      paymentStatus,
+      startDate,
+      endDate
+    }),
+    [customer, product, paymentStatus, startDate, endDate]
+  )
 
-	const totalCount = invoices?.length ?? 0;
-	const filteredCount = filteredItems.length;
+  const defaultInvoiceFilters = useCallback((): InvoiceFilterDraft => {
+    return {
+      customer: "",
+      product: "",
+      paymentStatus: "",
+      startDate: "",
+      endDate: ""
+    }
+  }, [])
 
-	const hasActiveFilters =
-		q.trim() !== "" ||
-		customer !== "" ||
-		product !== "" ||
-		paymentStatus !== "" ||
-		startDate !== "" ||
-		endDate !== "";
+  const topContent = useMemo(() => {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <h1 className="text-2xl font-bold">Invoices</h1>
+          <Button
+            variant="primary"
+            className="h-10 min-h-10 w-full shrink-0 px-4 sm:ml-auto sm:w-auto"
+            onPress={() => openInvoiceModal("create")}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <IconPlus size={18} />
+              Create Invoice
+            </span>
+          </Button>
+        </div>
 
-	const handleClearFilters = useCallback(() => {
-		setSearchParams({
-			q: "",
-			customer: "",
-			product: "",
-			paymentStatus: "",
-			startDate: "",
-			endDate: "",
-			sort: {
-				column: "createdAt",
-				direction: "descending",
-			},
-		});
-		setCustomerSearchValue("");
-		setProductSearchValue("");
-	}, [setSearchParams]);
+        <TableFilterDrawer<InvoiceFilterDraft>
+          title="Filter invoices"
+          description="Refine by customer, product, payment status, or invoice date."
+          activeCount={activeFilterCount}
+          committed={committedFilters}
+          getDefaultDraft={defaultInvoiceFilters}
+          onApply={(d) =>
+            void setSearchParams({
+              customer: d.customer,
+              product: d.product,
+              paymentStatus: d.paymentStatus,
+              startDate: d.startDate,
+              endDate: d.endDate
+            })
+          }
+          rootClassName="w-full justify-center sm:w-auto"
+          toolbarSlot={(toolbar) => (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-default-500">
+                {filteredCount === totalCount
+                  ? `${totalCount} invoices`
+                  : `${filteredCount} of ${totalCount} invoices`}
+              </p>
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+                <SearchField
+                  className="min-w-0 sm:min-w-0"
+                  value={q}
+                  onChange={(value) => setSearchParams({ q: value })}
+                >
+                  <SearchField.Group>
+                    <SearchField.SearchIcon />
+                    <SearchField.Input placeholder="Search invoices…" />
+                    <SearchField.ClearButton />
+                  </SearchField.Group>
+                </SearchField>
+                <div className="flex justify-center sm:justify-end">{toolbar}</div>
+              </div>
+            </div>
+          )}
+        >
+          {({ draft, setDraft }) => (
+            <InvoiceFiltersForm
+              customers={customers}
+              products={products}
+              draft={draft}
+              setDraft={setDraft}
+            />
+          )}
+        </TableFilterDrawer>
+      </div>
+    )
+  }, [
+    q,
+    activeFilterCount,
+    filteredCount,
+    totalCount,
+    setSearchParams,
+    committedFilters,
+    defaultInvoiceFilters,
+    customers,
+    products,
+    openInvoiceModal
+  ])
 
-	const topContent = useMemo(() => {
-		return (
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center justify-between">
-					<p className="text-sm text-default-500">
-						{filteredCount === totalCount
-							? `${totalCount} invoices`
-							: `${filteredCount} of ${totalCount} invoices`}
-					</p>
-				</div>
-				<div className="flex flex-col gap-4">
-					<div className="flex flex-col items-center gap-4 overflow-x-auto sm:flex-row [&>svg]:shrink-0">
-						<Input
-							isClearable
-							className="w-full sm:max-w-xs"
-							placeholder="Search invoices..."
-							startContent={
-								<IconSearch size={18} className="text-default-400" />
-							}
-							value={q}
-							onClear={() => setSearchParams({ q: "" })}
-							onValueChange={(value) => setSearchParams({ q: value })}
-						/>
+  const sortDescriptor: SortDescriptor = useMemo(
+    () => ({
+      column: sort.column,
+      direction: sort.direction
+    }),
+    [sort.column, sort.direction]
+  )
 
-						<Autocomplete
-							className="w-full md:max-w-[14rem]"
-							placeholder="Filter by customer"
-							defaultItems={customers || []}
-							selectedKey={customer || null}
-							itemHeight={50}
-							onSelectionChange={(key) => {
-								const selectedCustomer = customers?.find((c) => c.id === key);
-								setSearchParams({
-									customer: key ? String(key) : "",
-								});
-								if (selectedCustomer) {
-									setCustomerSearchValue(selectedCustomer.name);
-								} else {
-									setCustomerSearchValue("");
-								}
-							}}
-							inputValue={customerInputValue}
-							onInputChange={(value) => {
-								setCustomerSearchValue(value);
-								if (customer) {
-									const selectedCustomer = customers?.find(
-										(c) => c.id === customer,
-									);
-									if (value !== selectedCustomer?.name) {
-										setSearchParams({ customer: "" });
-									}
-								}
-							}}
-							allowsCustomValue={false}
-							labelPlacement="outside"
-							isClearable
-							onClear={() => {
-								setSearchParams({ customer: "" });
-								setCustomerSearchValue("");
-							}}
-						>
-							{(customer) => (
-								<AutocompleteItem
-									key={customer.id}
-									textValue={customer.name}
-									className="flex flex-col"
-								>
-									<span className="text-small">{customer.name}</span>
-									{customer.email && (
-										<span className="text-tiny text-default-400">
-											{customer.email}
-										</span>
-									)}
-								</AutocompleteItem>
-							)}
-						</Autocomplete>
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-divider bg-content1 px-8 py-16">
+        <div className="flex size-16 items-center justify-center rounded-full bg-danger/10">
+          <IconAlertTriangle size={32} className="text-danger" />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">Failed to load invoices</h3>
+          <p className="mt-1 text-sm text-default-500">
+            Something went wrong while fetching the data. Please try again.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          isDisabled={isFetching}
+          onPress={() => refetch()}
+        >
+          <span className="flex items-center justify-center gap-2">
+            {isFetching ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconRefresh size={18} />
+                Try again
+              </>
+            )}
+          </span>
+        </Button>
+      </div>
+    )
+  }
 
-						<Autocomplete
-							className="w-full md:max-w-[14rem]"
-							placeholder="Filter by product"
-							defaultItems={products || []}
-							selectedKey={product || null}
-							itemHeight={50}
-							onSelectionChange={(key) => {
-								const selectedProduct = products?.find((p) => p.id === key);
-								setSearchParams({
-									product: key ? String(key) : "",
-								});
-								if (selectedProduct) {
-									setProductSearchValue(selectedProduct.name);
-								} else {
-									setProductSearchValue("");
-								}
-							}}
-							inputValue={productInputValue}
-							onInputChange={(value) => {
-								setProductSearchValue(value);
-								if (product) {
-									const selectedProduct = products?.find(
-										(p) => p.id === product,
-									);
-									if (value !== selectedProduct?.name) {
-										setSearchParams({ product: "" });
-									}
-								}
-							}}
-							allowsCustomValue={false}
-							labelPlacement="outside"
-							isClearable
-							onClear={() => {
-								setSearchParams({ product: "" });
-								setProductSearchValue("");
-							}}
-						>
-							{(product) => (
-								<AutocompleteItem key={product.id} textValue={product.name}>
-									<div className="flex flex-col">
-										<span className="text-small">{product.name}</span>
-										<span className="text-tiny text-default-400">
-											{formatPrice(product.price)}
-										</span>
-									</div>
-								</AutocompleteItem>
-							)}
-						</Autocomplete>
-
-						<Select
-							className="md:max-w-auto w-full md:w-auto"
-							fullWidth={false}
-							placeholder="Payment status"
-							selectedKeys={paymentStatus ? [paymentStatus] : []}
-							onSelectionChange={(keys) => {
-								const selected = Array.from(keys)[0] as string | undefined;
-								setSearchParams({
-									paymentStatus: selected || "",
-								});
-							}}
-							labelPlacement="outside"
-							isClearable
-							onClear={() => {
-								setSearchParams({ paymentStatus: "" });
-							}}
-						>
-							<SelectItem key="paid">Paid</SelectItem>
-							<SelectItem key="partially_paid">Partially Paid</SelectItem>
-							<SelectItem key="unpaid">Unpaid</SelectItem>
-						</Select>
-
-						<DateRangeFilter />
-
-						{hasActiveFilters && (
-							<Button
-								variant="flat"
-								color="danger"
-								startContent={<IconX size={16} />}
-								onPress={handleClearFilters}
-							>
-								Clear filters
-							</Button>
-						)}
-					</div>
-				</div>
-			</div>
-		);
-	}, [
-		q,
-		filteredCount,
-		totalCount,
-		setSearchParams,
-		hasActiveFilters,
-		handleClearFilters,
-		customers,
-		products,
-		customer,
-		product,
-		paymentStatus,
-		customerInputValue,
-		productInputValue,
-	]);
-
-	if (isError) {
-		return (
-			<div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-divider bg-content1 px-8 py-16">
-				<div className="flex size-16 items-center justify-center rounded-full bg-danger/10">
-					<IconAlertTriangle size={32} className="text-danger" />
-				</div>
-				<div className="text-center">
-					<h3 className="text-lg font-semibold">Failed to load invoices</h3>
-					<p className="mt-1 text-sm text-default-500">
-						Something went wrong while fetching the data. Please try again.
-					</p>
-				</div>
-				<Button
-					color="primary"
-					variant="flat"
-					startContent={!isFetching && <IconRefresh size={18} />}
-					isLoading={isFetching}
-					onPress={() => refetch()}
-				>
-					Try again
-				</Button>
-			</div>
-		);
-	}
-
-	return (
-		<Table
-			aria-label="Invoices table"
-			topContent={topContent}
-			topContentPlacement="outside"
-			sortDescriptor={{
-				column: sort.column,
-				direction: sort.direction,
-			}}
-			onSortChange={({ column, direction }) => {
-				const isSameColumn = column === sort.column;
-
-				setSearchParams({
-					sort: {
-						column: (column as typeof sort.column) || "createdAt",
-						direction: isSameColumn
-							? (direction as typeof sort.direction)
-							: "descending",
-					},
-				});
-			}}
-		>
-			<TableHeader columns={columns}>
-				{(column) => (
-					<TableColumn key={column.uid} allowsSorting={column.sortable}>
-						{column.name}
-					</TableColumn>
-				)}
-			</TableHeader>
-			<TableBody
-				items={sortedItems}
-				isLoading={isLoading}
-				emptyContent={<p className="text-default-500">No invoices found</p>}
-				loadingContent={
-					<Spinner className="pt-10" label="Loading invoices..." />
-				}
-			>
-				{(item) => (
-					<TableRow key={item.id}>
-						{(columnKey) => (
-							<TableCell>{renderCell(item, columnKey)}</TableCell>
-						)}
-					</TableRow>
-				)}
-			</TableBody>
-		</Table>
-	);
+  return (
+    <div className="flex flex-col gap-4">
+      {topContent}
+      <Table aria-label="Invoices table">
+        <Table.ScrollContainer
+          className={cn(
+            "relative min-w-0",
+            isLoading && sortedItems.length === 0 && "min-h-[200px]"
+          )}
+        >
+          <TableLoadingOverlay
+            show={isLoading}
+            label="Loading invoices"
+          />
+          <Table.Content
+            sortDescriptor={sortDescriptor}
+            onSortChange={({ column, direction }) => {
+              const isSameColumn = column === sort.column
+              const dir =
+                (direction ?? "descending") as (typeof sort)["direction"]
+              setSearchParams({
+                sort: {
+                  column:
+                    ((column ?? "createdAt") as (typeof sort)["column"]) ??
+                    "createdAt",
+                  direction: isSameColumn ? dir : "descending"
+                }
+              })
+            }}
+            className={cn(
+              isLoading && "pointer-events-none opacity-40",
+              "min-w-[920px]"
+            )}
+          >
+            <Table.Header columns={[...columns]}>
+              {(column) => (
+                <Table.Column
+                  id={column.id}
+                  isRowHeader={column.id === "id"}
+                  allowsSorting={column.sortable}
+                >
+                  {column.name}
+                </Table.Column>
+              )}
+            </Table.Header>
+            {!isLoading && sortedItems.length === 0 ? (
+              <Table.Body>
+                <Table.Row id="empty">
+                  <Table.Cell colSpan={columns.length}>
+                    <p className="py-10 text-center text-default-500">
+                      No invoices found
+                    </p>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            ) : isLoading && sortedItems.length === 0 ? (
+              <Table.Body key="initial-loading" aria-label="Loading" />
+            ) : (
+              <Table.Body key="loaded" items={sortedItems}>
+                {(item) => (
+                  <Table.Row
+                    columns={columns.map((c) => ({ id: c.id }))}
+                    id={String(item.id)}
+                  >
+                    {(column) => {
+                      const colId = (column as { id: string }).id
+                      return (
+                        <Table.Cell
+                          className={cn(
+                            colId === "customer" &&
+                              "min-w-[9rem] max-w-[14rem] align-top",
+                            colId === "products" &&
+                              "min-w-[11rem] max-w-[18rem] overflow-hidden align-top sm:max-w-[22rem]",
+                            colId === "total" && "w-[1%] whitespace-nowrap",
+                            colId === "paymentStatus" && "whitespace-nowrap",
+                            colId === "amountPaid" && "whitespace-nowrap",
+                            colId === "id" && "whitespace-nowrap",
+                            colId === "createdAt" && "whitespace-nowrap",
+                            colId === "actions" && "w-14 min-w-14"
+                          )}
+                        >
+                          {renderCell(item, colId)}
+                        </Table.Cell>
+                      )
+                    }}
+                  </Table.Row>
+                )}
+              </Table.Body>
+            )}
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
+  )
 }

@@ -1,10 +1,19 @@
 "use client"
 
+import NextLink from "next/link"
 import { Link } from "@/components/link"
 import { resetPasswordSchema } from "@/validations/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { addToast, Button, Input } from "@heroui/react"
+import {
+  Button,
+  TextField,
+  Input,
+  FieldError,
+  toast,
+  buttonVariants,
+  cn
+} from "@heroui/react"
 import { Logo } from "@/components/logo"
 import { createClient } from "@/utils/supabase/client"
 import { ROUTES } from "@/utils/routes"
@@ -33,10 +42,7 @@ export default function ResetPasswordPage() {
     if (error) {
       form.setError("root", { message: error.message })
     } else {
-      addToast({
-        title: "Reset link sent",
-        color: "success"
-      })
+      toast.success("Reset link sent")
     }
   })
 
@@ -70,14 +76,15 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="space-y-3">
-            <Button
-              as={Link}
+            <NextLink
               href={ROUTES.login}
-              color="primary"
-              className="w-full"
+              className={cn(
+                buttonVariants({ variant: "primary", size: "md" }),
+                "flex w-full items-center justify-center"
+              )}
             >
               Back to sign in
-            </Button>
+            </NextLink>
             <p className="text-center text-xs text-default-400">
               Didn&apos;t receive the email? Check your spam folder or{" "}
               <button
@@ -111,31 +118,42 @@ export default function ResetPasswordPage() {
           control={form.control}
           name="email"
           render={({ field, fieldState }) => (
-            <Input
-              {...field}
-              type="email"
-              label="Email"
-              labelPlacement="outside"
-              placeholder="you@example.com"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isSubmitting}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                aria-label="Email"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
         <Button
           type="submit"
-          color="primary"
+          variant="primary"
           className="w-full"
-          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
         >
-          Send reset link
+          {isSubmitting ? "Sending reset link…" : "Send reset link"}
         </Button>
       </form>
 
       <div className="flex items-center justify-center">
-        <Link size="sm" href={ROUTES.login} isDisabled={isSubmitting}>
+        <Link
+          href={ROUTES.login}
+          className="text-sm"
+          aria-disabled={isSubmitting}
+          tabIndex={isSubmitting ? -1 : undefined}
+        >
           Back to sign in
         </Link>
       </div>

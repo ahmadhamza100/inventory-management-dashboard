@@ -5,50 +5,44 @@ import filter from "lodash.filter"
 import { useMemo, useCallback } from "react"
 import { useTransactionModalStore } from "@/stores/use-transaction-modal-store"
 import { useTransactionsQuery } from "@/queries/use-transactions-query"
-import { formatDate, formatPrice, toSentenceCase } from "@/utils/helpers"
+import { formatDate, formatPrice } from "@/utils/helpers"
 import { parseAsString, parseAsStringEnum, useQueryStates } from "nuqs"
 import { transactionSortParser } from "@/utils/sorting-parsers"
 import { transactionTypeEnum } from "@/db/schema"
-import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
+import { TableLoadingOverlay } from "@/components/table-loading-overlay"
+import { TableFilterDrawer } from "@/components/table-filter-drawer"
+import {
+  TransactionFiltersForm,
+  type TransactionFilterDraft
+} from "@/app/(dashboard)/_components/transaction-filters-form"
 import type { Transaction } from "@/db/schema"
 import {
-  IconSearch,
   IconAlertTriangle,
   IconRefresh,
   IconDotsVertical,
   IconPencil,
   IconTrash,
-  IconX,
   IconArrowDown,
   IconArrowUp
 } from "@tabler/icons-react"
 import {
   Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
   Spinner,
+  Chip,
   Button,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Chip,
-  Select,
-  SelectItem,
+  SearchField,
   cn
 } from "@heroui/react"
+import type { SortDescriptor } from "@heroui/react"
 
 const columns = [
-  { name: "TYPE", uid: "type", sortable: false },
-  { name: "AMOUNT", uid: "amount", sortable: true },
-  { name: "DATE", uid: "date", sortable: true },
-  { name: "DESCRIPTION", uid: "description", sortable: false },
-  { name: "", uid: "actions", sortable: false }
-]
+  { name: "TYPE", id: "type", sortable: false },
+  { name: "AMOUNT", id: "amount", sortable: true },
+  { name: "DATE", id: "date", sortable: true },
+  { name: "DESCRIPTION", id: "description", sortable: false },
+  { name: "", id: "actions", sortable: false }
+] as const
 
 export function TransactionsTable() {
   const [{ q, type, startDate, endDate, sort }, setSearchParams] =
@@ -131,17 +125,17 @@ export function TransactionsTable() {
           return (
             <Chip
               size="sm"
-              variant="flat"
+              variant="soft"
               color={isCashIn ? "success" : "danger"}
-              startContent={
-                isCashIn ? (
+            >
+              <span className="flex items-center gap-1">
+                {isCashIn ? (
                   <IconArrowDown size={14} />
                 ) : (
                   <IconArrowUp size={14} />
-                )
-              }
-            >
-              {isCashIn ? "Cash In" : "Cash Out"}
+                )}
+                {isCashIn ? "Cash In" : "Cash Out"}
+              </span>
             </Chip>
           )
         }
@@ -150,7 +144,7 @@ export function TransactionsTable() {
           return (
             <span
               className={cn(
-                "font-semibold tabular-nums",
+                "font-semibold tabular-nums whitespace-nowrap",
                 isCashInAmount ? "text-success" : "text-danger"
               )}
             >
@@ -161,7 +155,7 @@ export function TransactionsTable() {
         }
         case "date":
           return (
-            <span className="text-sm whitespace-nowrap text-default-500">
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-500">
               {formatDate(transaction.date)}
             </span>
           )
@@ -174,29 +168,38 @@ export function TransactionsTable() {
         case "actions":
           return (
             <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly size="sm" variant="light">
-                  <IconDotsVertical size={18} />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Transaction actions">
-                <DropdownItem
-                  key="edit"
-                  startContent={<IconPencil size={16} />}
-                  onPress={() => openTransactionModal("update", transaction)}
+              <Dropdown.Trigger aria-label="Transaction actions">
+                <IconDotsVertical size={18} />
+              </Dropdown.Trigger>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Transaction actions"
+                  onAction={(key) => {
+                    if (key === "edit") {
+                      openTransactionModal("update", transaction)
+                    } else if (key === "delete") {
+                      openTransactionModal("delete", transaction)
+                    }
+                  }}
                 >
-                  Edit transaction
-                </DropdownItem>
-                <DropdownItem
-                  key="delete"
-                  color="danger"
-                  className="text-danger"
-                  startContent={<IconTrash size={16} />}
-                  onPress={() => openTransactionModal("delete", transaction)}
-                >
-                  Delete transaction
-                </DropdownItem>
-              </DropdownMenu>
+                  <Dropdown.Item id="edit" textValue="Edit transaction">
+                    <span className="flex items-center gap-2">
+                      <IconPencil size={16} />
+                      Edit transaction
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="delete"
+                    textValue="Delete transaction"
+                    variant="danger"
+                  >
+                    <span className="flex items-center gap-2">
+                      <IconTrash size={16} />
+                      Delete transaction
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
             </Dropdown>
           )
         default:
@@ -209,21 +212,39 @@ export function TransactionsTable() {
   const totalCount = transactions?.length ?? 0
   const filteredCount = filteredItems.length
 
-  const hasActiveFilters =
-    q.trim() !== "" || type !== null || startDate !== "" || endDate !== ""
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (q.trim()) n += 1
+    if (type != null) n += 1
+    if (startDate || endDate) n += 1
+    return n
+  }, [q, type, startDate, endDate])
 
-  const handleClearFilters = useCallback(() => {
-    setSearchParams({
-      q: "",
+  const committedFilters = useMemo(
+    (): TransactionFilterDraft => ({
+      type,
+      startDate,
+      endDate
+    }),
+    [type, startDate, endDate]
+  )
+
+  const defaultTransactionFilters = useCallback(
+    (): TransactionFilterDraft => ({
       type: null,
       startDate: "",
-      endDate: "",
-      sort: {
-        column: "date",
-        direction: "descending"
-      }
-    })
-  }, [setSearchParams])
+      endDate: ""
+    }),
+    []
+  )
+
+  const sortDescriptor: SortDescriptor = useMemo(
+    () => ({
+      column: sort.column,
+      direction: sort.direction
+    }),
+    [sort.column, sort.direction]
+  )
 
   const topContent = useMemo(() => {
     return (
@@ -239,73 +260,62 @@ export function TransactionsTable() {
               <p
                 className={cn(
                   "text-sm font-semibold tabular-nums",
-                  totalCash >= 0 && "text-success",
-                  totalCash < 0 && "text-danger"
+                  totalCash >= 0 ? "text-success" : "text-danger"
                 )}
               >
-                Total Cash: {totalCash >= 0 && "+"}
+                Total Cash: {totalCash >= 0 ? "+" : ""}
                 {formatPrice(totalCash)}
               </p>
             )}
           </div>
         </div>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-center gap-4 overflow-x-auto sm:flex-row [&>svg]:shrink-0">
-            <Input
-              isClearable
-              className="w-full sm:max-w-xs"
-              placeholder="Search by description or amount..."
-              startContent={
-                <IconSearch size={18} className="text-default-400" />
-              }
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+            <SearchField
+              className="min-w-0"
               value={q}
-              onClear={() => setSearchParams({ q: "" })}
-              onValueChange={(value) => setSearchParams({ q: value })}
-            />
-
-            <Select
-              className="w-full sm:w-40"
-              selectedKeys={type ? [type] : []}
-              placeholder="Filter by type"
-              isClearable
-              onClear={() => setSearchParams({ type: null })}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as typeof type
-                setSearchParams({ type: selected || null })
-              }}
+              onChange={(value) => setSearchParams({ q: value })}
             >
-              {transactionTypeEnum.enumValues.map((typeValue) => (
-                <SelectItem key={typeValue}>
-                  {toSentenceCase(typeValue)}
-                </SelectItem>
-              ))}
-            </Select>
+              <SearchField.Group>
+                <SearchField.SearchIcon />
+                <SearchField.Input placeholder="Search by description or amount..." />
+                <SearchField.ClearButton />
+              </SearchField.Group>
+            </SearchField>
 
-            <DateRangeFilter />
-
-            {hasActiveFilters && (
-              <Button
-                variant="flat"
-                color="danger"
-                startContent={<IconX size={16} />}
-                onPress={handleClearFilters}
-              >
-                Clear filters
-              </Button>
-            )}
+            <TableFilterDrawer<TransactionFilterDraft>
+              title="Filter transactions"
+              description="Transaction type and date range."
+              activeCount={activeFilterCount}
+              committed={committedFilters}
+              getDefaultDraft={defaultTransactionFilters}
+              onApply={(d) =>
+                void setSearchParams({
+                  type: d.type,
+                  startDate: d.startDate,
+                  endDate: d.endDate
+                })
+              }
+              triggerClassName="w-full justify-center sm:w-auto"
+              rootClassName="w-full justify-center sm:w-auto"
+            >
+              {({ draft, setDraft }) => (
+                <TransactionFiltersForm draft={draft} setDraft={setDraft} />
+              )}
+            </TableFilterDrawer>
           </div>
         </div>
       </div>
     )
   }, [
     q,
-    type,
     filteredCount,
     totalCount,
     totalCash,
     setSearchParams,
-    hasActiveFilters,
-    handleClearFilters
+    activeFilterCount,
+    committedFilters,
+    defaultTransactionFilters
   ])
 
   if (isError) {
@@ -321,63 +331,101 @@ export function TransactionsTable() {
           </p>
         </div>
         <Button
-          color="primary"
-          variant="flat"
-          startContent={!isFetching && <IconRefresh size={18} />}
-          isLoading={isFetching}
+          variant="secondary"
+          isDisabled={isFetching}
           onPress={() => refetch()}
         >
-          Try again
+          <span className="flex items-center justify-center gap-2">
+            {isFetching ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconRefresh size={18} />
+                Try again
+              </>
+            )}
+          </span>
         </Button>
       </div>
     )
   }
 
   return (
-    <Table
-      aria-label="Transactions table"
-      topContent={topContent}
-      topContentPlacement="outside"
-      sortDescriptor={{
-        column: sort.column,
-        direction: sort.direction
-      }}
-      onSortChange={({ column, direction }) => {
-        const isSameColumn = column === sort.column
-
-        setSearchParams({
-          sort: {
-            column: (column as typeof sort.column) || "date",
-            direction: isSameColumn
-              ? (direction as typeof sort.direction)
-              : "descending"
-          }
-        })
-      }}
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} allowsSorting={column.sortable}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody
-        items={sortedItems}
-        isLoading={isLoading}
-        emptyContent={<p className="text-default-500">No transactions found</p>}
-        loadingContent={
-          <Spinner className="pt-10" label="Loading transactions..." />
-        }
-      >
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
+    <div className="flex flex-col gap-4">
+      {topContent}
+      <Table aria-label="Transactions table">
+        <Table.ScrollContainer
+          className={cn(
+            "relative min-w-0",
+            isLoading && sortedItems.length === 0 && "min-h-[200px]"
+          )}
+        >
+          <TableLoadingOverlay
+            show={isLoading}
+            label="Loading transactions"
+          />
+          <Table.Content
+            sortDescriptor={sortDescriptor}
+            onSortChange={(descriptor) => {
+              const col = descriptor.column as (typeof sort)["column"]
+              const dir =
+                (descriptor.direction as (typeof sort)["direction"]) ??
+                "descending"
+              const isSame = col === sort.column
+              setSearchParams({
+                sort: {
+                  column: col ?? "date",
+                  direction: isSame ? dir : "descending"
+                }
+              })
+            }}
+            className={cn(isLoading && "pointer-events-none opacity-40")}
+          >
+            <Table.Header columns={[...columns]}>
+              {(column) => (
+                <Table.Column
+                  id={column.id}
+                  isRowHeader={column.id === "type"}
+                  allowsSorting={column.sortable}
+                >
+                  {column.name}
+                </Table.Column>
+              )}
+            </Table.Header>
+            {!isLoading && sortedItems.length === 0 ? (
+              <Table.Body>
+                <Table.Row id="empty">
+                  <Table.Cell colSpan={columns.length}>
+                    <p className="py-10 text-center text-default-500">
+                      No transactions found
+                    </p>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            ) : isLoading && sortedItems.length === 0 ? (
+              <Table.Body key="initial-loading" aria-label="Loading" />
+            ) : (
+              <Table.Body key="loaded" items={sortedItems}>
+                {(item) => (
+                  <Table.Row
+                    columns={columns.map((c) => ({ id: c.id }))}
+                    id={item.id}
+                  >
+                    {(column) => (
+                      <Table.Cell>
+                        {renderCell(
+                          item,
+                          (column as { id: React.Key }).id
+                        )}
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                )}
+              </Table.Body>
             )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
   )
 }

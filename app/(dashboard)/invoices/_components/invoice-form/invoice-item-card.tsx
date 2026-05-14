@@ -2,8 +2,9 @@
 
 import { useMemo } from "react"
 import { useFormContext, Controller, useWatch } from "react-hook-form"
-import { Button, NumberInput, Tooltip, Image } from "@heroui/react"
-import { IconTrash, IconPhoto } from "@tabler/icons-react"
+import { Button, NumberField, FieldError } from "@heroui/react"
+import { IconTrash } from "@tabler/icons-react"
+import { ProductThumbnail } from "@/components/product-thumbnail"
 import { formatPrice, FORMAT_CURRENCY_OPTS } from "@/utils/helpers"
 import { useProductsQuery } from "@/queries/use-products-query"
 import type { InvoiceSchema } from "@/validations/invoice"
@@ -47,95 +48,105 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-divider/50 bg-content1 p-4">
-      {product?.images?.[0] ? (
-        <Image
-          src={product.images[0]}
-          alt={product.name}
-          width={64}
-          height={64}
-          radius="md"
-          className="shrink-0 object-cover"
+    <div className="min-w-0 rounded-xl border border-divider/60 bg-content1 p-3 shadow-sm sm:p-4">
+      <div className="flex min-w-0 gap-3 sm:gap-4">
+        <ProductThumbnail
+          src={product?.images?.[0]}
+          alt={product?.name || "Product"}
+          boxClassName="size-14 shrink-0 rounded-lg sm:size-16"
         />
-      ) : (
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-default-100">
-          <IconPhoto className="size-6 text-default-400" />
-        </div>
-      )}
 
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-snug text-foreground break-words">
               {product?.name || "Unknown Product"}
             </p>
-            {product && (
-              <p className="text-xs text-default-500">
-                Stock: {product.stock} available
+            {product ? (
+              <p className="mt-0.5 text-xs text-default-500">
+                {product.stock} in stock
               </p>
-            )}
+            ) : null}
           </div>
-          <Tooltip content="Remove product" delay={0}>
+
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+            <Controller
+              control={form.control}
+              name={`items.${index}.quantity`}
+              render={({ field, fieldState }) => (
+                <NumberField
+                  fullWidth
+                  isInvalid={fieldState.invalid}
+                  isDisabled={isDisabled}
+                  minValue={1}
+                  maxValue={maxQuantity}
+                  step={1}
+                  value={field.value}
+                  onChange={field.onChange}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  aria-label="Quantity"
+                >
+                  <NumberField.Group>
+                    <NumberField.DecrementButton />
+                    <NumberField.Input placeholder="Qty" />
+                    <NumberField.IncrementButton />
+                  </NumberField.Group>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </NumberField>
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name={`items.${index}.price`}
+              render={({ field, fieldState }) => (
+                <NumberField
+                  fullWidth
+                  isInvalid={fieldState.invalid}
+                  isDisabled={isDisabled}
+                  minValue={0.01}
+                  step={0.01}
+                  formatOptions={FORMAT_CURRENCY_OPTS}
+                  value={field.value}
+                  onChange={(v) => field.onChange(v != null ? Number(v) : v)}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  aria-label="Unit price"
+                >
+                  <NumberField.Group>
+                    <NumberField.DecrementButton />
+                    <NumberField.Input placeholder="0.00" />
+                    <NumberField.IncrementButton />
+                  </NumberField.Group>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </NumberField>
+              )}
+            />
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-2 border-t border-divider/50 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <span className="text-default-500">Subtotal</span>
+              <span className="font-semibold tabular-nums whitespace-nowrap text-foreground">
+                {formatPrice(subtotal)}
+              </span>
+            </div>
+
             <Button
-              isIconOnly
+              type="button"
+              variant="danger-soft"
               size="sm"
-              variant="light"
-              color="danger"
+              className="w-full shrink-0 sm:w-auto"
+              aria-label="Remove product from invoice"
               onPress={handleRemove}
               isDisabled={isDisabled}
             >
-              <IconTrash size={16} />
+              <span className="flex items-center justify-center gap-2">
+                <IconTrash size={16} stroke={1.75} />
+                Remove
+              </span>
             </Button>
-          </Tooltip>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Controller
-            control={form.control}
-            name={`items.${index}.quantity`}
-            render={({ field, fieldState }) => (
-              <NumberInput
-                label="Quantity"
-                value={field.value}
-                onValueChange={field.onChange}
-                minValue={1}
-                maxValue={maxQuantity}
-                step={1}
-                isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-                isDisabled={isDisabled}
-                labelPlacement="outside"
-                classNames={{ inputWrapper: "shadow-none" }}
-              />
-            )}
-          />
-
-          <Controller
-            control={form.control}
-            name={`items.${index}.price`}
-            render={({ field, fieldState }) => (
-              <NumberInput
-                label="Unit Price"
-                value={field.value}
-                onValueChange={(value) => field.onChange(Number(value))}
-                minValue={0.01}
-                step={0.01}
-                isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-                isDisabled={isDisabled}
-                labelPlacement="outside"
-                classNames={{ inputWrapper: "shadow-none" }}
-                formatOptions={FORMAT_CURRENCY_OPTS}
-              />
-            )}
-          />
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-default-500">Subtotal</span>
-          <span className="font-semibold tabular-nums">
-            {formatPrice(subtotal)}
-          </span>
+          </div>
         </div>
       </div>
     </div>

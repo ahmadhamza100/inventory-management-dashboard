@@ -8,47 +8,41 @@ import { useProductsQuery } from "@/queries/use-products-query"
 import { formatPrice, formatDate } from "@/utils/helpers"
 import { parseAsString, parseAsStringEnum, useQueryStates } from "nuqs"
 import { productSortParser } from "@/utils/sorting-parsers"
-import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
+import { TableLoadingOverlay } from "@/components/table-loading-overlay"
+import { TableFilterDrawer } from "@/components/table-filter-drawer"
+import { ProductThumbnail } from "@/components/product-thumbnail"
+import {
+  ProductFiltersForm,
+  type ProductFilterDraft
+} from "@/app/(dashboard)/_components/product-filters-form"
 import type { Product } from "@/db/schema"
 import {
-  IconSearch,
   IconAlertTriangle,
   IconRefresh,
   IconDotsVertical,
   IconFileInvoice,
   IconPencil,
-  IconTrash,
-  IconPhoto,
-  IconX
+  IconTrash
 } from "@tabler/icons-react"
 import {
   Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
   Spinner,
-  Image,
   Chip,
-  Select,
-  SelectItem,
   Button,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
+  SearchField,
+  cn
 } from "@heroui/react"
+import type { SortDescriptor } from "@heroui/react"
 
 const columns = [
-  { name: "PRODUCT", uid: "name", sortable: true },
-  { name: "SKU", uid: "sku", sortable: false },
-  { name: "PRICE", uid: "price", sortable: true },
-  { name: "STOCK", uid: "stock", sortable: true },
-  { name: "DATE", uid: "createdAt", sortable: true },
-  { name: "", uid: "actions", sortable: false }
-]
+  { name: "PRODUCT", id: "name", sortable: true },
+  { name: "SKU", id: "sku", sortable: false },
+  { name: "PRICE", id: "price", sortable: true },
+  { name: "STOCK", id: "stock", sortable: true },
+  { name: "DATE", id: "createdAt", sortable: true },
+  { name: "", id: "actions", sortable: false }
+] as const
 
 export function ProductsTable() {
   const {
@@ -128,20 +122,11 @@ export function ProductsTable() {
         case "name":
           return (
             <div className="flex items-center gap-3">
-              {product.images?.[0] ? (
-                <Image
-                  src={product.images[0]}
-                  alt={product.name}
-                  width={40}
-                  height={40}
-                  radius="md"
-                  className="shrink-0 object-cover"
-                />
-              ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-default-100">
-                  <IconPhoto className="size-5 text-default-400" />
-                </div>
-              )}
+              <ProductThumbnail
+                src={product.images?.[0]}
+                alt={product.name}
+                boxClassName="size-10 shrink-0 rounded-md"
+              />
               <span className="truncate text-sm font-medium">
                 {product.name}
               </span>
@@ -152,69 +137,82 @@ export function ProductsTable() {
             <button
               type="button"
               className="font-mono text-sm whitespace-nowrap text-default-500"
-              onClick={() => navigator.clipboard.writeText(product.sku)}
+              onClick={() => void navigator.clipboard.writeText(product.sku)}
             >
               {product.sku}
             </button>
           )
         case "price":
           return (
-            <span className="font-medium">{formatPrice(product.price)}</span>
+            <span className="font-medium tabular-nums whitespace-nowrap">
+              {formatPrice(product.price)}
+            </span>
           )
         case "stock":
           return (
-            <Chip
-              size="sm"
-              variant="flat"
-              color={
-                product.stock > 100
-                  ? "success"
-                  : product.stock > 0
-                    ? "warning"
-                    : "danger"
-              }
-            >
-              {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
-            </Chip>
+            <span className="inline-flex max-w-full whitespace-nowrap">
+              <Chip
+                size="sm"
+                variant="soft"
+                color={
+                  product.stock > 100
+                    ? "success"
+                    : product.stock > 0
+                      ? "warning"
+                      : "danger"
+                }
+              >
+                {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+              </Chip>
+            </span>
           )
         case "createdAt":
           return (
-            <span className="text-sm whitespace-nowrap text-default-500">
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-500">
               {formatDate(product.createdAt)}
             </span>
           )
         case "actions":
           return (
             <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly size="sm" variant="light">
-                  <IconDotsVertical size={18} />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Product actions">
-                <DropdownItem
-                  key="invoices"
-                  startContent={<IconFileInvoice size={16} />}
+              <Dropdown.Trigger aria-label="Product actions">
+                <IconDotsVertical size={18} />
+              </Dropdown.Trigger>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Product actions"
+                  onAction={(key) => {
+                    if (key === "edit") {
+                      openProductModal("update", product)
+                    } else if (key === "delete") {
+                      openProductModal("delete", product)
+                    }
+                  }}
                 >
-                  View invoices
-                </DropdownItem>
-                <DropdownItem
-                  key="edit"
-                  startContent={<IconPencil size={16} />}
-                  onPress={() => openProductModal("update", product)}
-                >
-                  Edit product
-                </DropdownItem>
-                <DropdownItem
-                  key="delete"
-                  color="danger"
-                  className="text-danger"
-                  startContent={<IconTrash size={16} />}
-                  onPress={() => openProductModal("delete", product)}
-                >
-                  Delete product
-                </DropdownItem>
-              </DropdownMenu>
+                  <Dropdown.Item id="invoices" textValue="View invoices">
+                    <span className="flex items-center gap-2">
+                      <IconFileInvoice size={16} />
+                      View invoices
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item id="edit" textValue="Edit product">
+                    <span className="flex items-center gap-2">
+                      <IconPencil size={16} />
+                      Edit product
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="delete"
+                    textValue="Delete product"
+                    variant="danger"
+                  >
+                    <span className="flex items-center gap-2">
+                      <IconTrash size={16} />
+                      Delete product
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
             </Dropdown>
           )
         default:
@@ -227,26 +225,31 @@ export function ProductsTable() {
   const totalCount = products?.length ?? 0
   const filteredCount = filteredItems.length
 
-  type Availability = NonNullable<typeof availability>
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (q.trim()) n += 1
+    if (availability !== "all") n += 1
+    if (startDate || endDate) n += 1
+    return n
+  }, [q, availability, startDate, endDate])
 
-  const hasActiveFilters =
-    q.trim() !== "" ||
-    availability !== "all" ||
-    startDate !== "" ||
-    endDate !== ""
+  const committedFilters = useMemo(
+    (): ProductFilterDraft => ({
+      availability,
+      startDate,
+      endDate
+    }),
+    [availability, startDate, endDate]
+  )
 
-  const handleClearFilters = useCallback(() => {
-    setSearchParams({
-      q: "",
+  const defaultProductFilters = useCallback(
+    (): ProductFilterDraft => ({
       availability: "all",
       startDate: "",
-      endDate: "",
-      sort: {
-        column: "createdAt",
-        direction: "descending"
-      }
-    })
-  }, [setSearchParams])
+      endDate: ""
+    }),
+    []
+  )
 
   const topContent = useMemo(() => {
     return (
@@ -258,54 +261,59 @@ export function ProductsTable() {
               : `${filteredCount} of ${totalCount} products`}
           </p>
         </div>
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <Input
-            isClearable
-            className="w-full sm:max-w-xs"
-            placeholder="Search by name..."
-            startContent={<IconSearch size={18} className="text-default-400" />}
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+          <SearchField
+            className="min-w-0"
             value={q}
-            onClear={() => setSearchParams({ q: "" })}
-            onValueChange={(value) => setSearchParams({ q: value })}
-          />
-          <Select
-            className="w-full sm:w-40"
-            selectedKeys={[availability]}
-            aria-label="Filter by availability"
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0]
-              setSearchParams({ availability: selected as Availability })
-            }}
+            onChange={(value) => setSearchParams({ q: value })}
           >
-            <SelectItem key="all">All</SelectItem>
-            <SelectItem key="in_stock">In Stock</SelectItem>
-            <SelectItem key="out_of_stock">Out of Stock</SelectItem>
-          </Select>
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search by name..." />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
 
-          <DateRangeFilter />
-
-          {hasActiveFilters && (
-            <Button
-              variant="flat"
-              color="danger"
-              startContent={<IconX size={16} />}
-              onPress={handleClearFilters}
-            >
-              Clear filters
-            </Button>
-          )}
+          <TableFilterDrawer<ProductFilterDraft>
+            title="Filter products"
+            description="Availability and created date."
+            activeCount={activeFilterCount}
+            committed={committedFilters}
+            getDefaultDraft={defaultProductFilters}
+            onApply={(d) =>
+              void setSearchParams({
+                availability: d.availability,
+                startDate: d.startDate,
+                endDate: d.endDate
+              })
+            }
+            triggerClassName="w-full justify-center sm:w-auto"
+            rootClassName="w-full justify-center sm:w-auto"
+          >
+            {({ draft, setDraft }) => (
+              <ProductFiltersForm draft={draft} setDraft={setDraft} />
+            )}
+          </TableFilterDrawer>
         </div>
       </div>
     )
   }, [
     q,
-    availability,
     filteredCount,
     totalCount,
     setSearchParams,
-    hasActiveFilters,
-    handleClearFilters
+    activeFilterCount,
+    committedFilters,
+    defaultProductFilters
   ])
+
+  const sortDescriptor: SortDescriptor = useMemo(
+    () => ({
+      column: sort.column,
+      direction: sort.direction
+    }),
+    [sort.column, sort.direction]
+  )
 
   if (isError) {
     return (
@@ -320,56 +328,96 @@ export function ProductsTable() {
           </p>
         </div>
         <Button
-          color="primary"
-          variant="flat"
-          startContent={!isFetching && <IconRefresh size={18} />}
-          isLoading={isFetching}
+          variant="secondary"
+          isDisabled={isFetching}
           onPress={() => refetch()}
         >
-          Try again
+          <span className="flex items-center justify-center gap-2">
+            {isFetching ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconRefresh size={18} />
+                Try again
+              </>
+            )}
+          </span>
         </Button>
       </div>
     )
   }
 
   return (
-    <Table
-      aria-label="Products table"
-      topContent={topContent}
-      topContentPlacement="outside"
-      sortDescriptor={{ column: sort.column, direction: sort.direction }}
-      onSortChange={({ column, direction }) => {
-        setSearchParams({
-          sort: {
-            column: column as typeof sort.column,
-            direction: direction as typeof sort.direction
-          }
-        })
-      }}
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} allowsSorting={column.sortable}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody
-        items={sortedItems}
-        isLoading={isLoading}
-        emptyContent={<p className="text-default-500">No products found</p>}
-        loadingContent={
-          <Spinner className="pt-10" label="Loading products..." />
-        }
-      >
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
+    <div className="flex flex-col gap-4">
+      {topContent}
+      <Table aria-label="Products table">
+        <Table.ScrollContainer
+          className={cn(
+            "relative min-w-0",
+            isLoading && sortedItems.length === 0 && "min-h-[200px]"
+          )}
+        >
+          <TableLoadingOverlay
+            show={isLoading}
+            label="Loading products"
+          />
+          <Table.Content
+            sortDescriptor={sortDescriptor}
+            onSortChange={(descriptor) => {
+              setSearchParams({
+                sort: {
+                  column: descriptor.column as (typeof sort)["column"],
+                  direction: descriptor.direction as (typeof sort)["direction"]
+                }
+              })
+            }}
+            className={cn(isLoading && "pointer-events-none opacity-40")}
+          >
+            <Table.Header columns={[...columns]}>
+              {(column) => (
+                <Table.Column
+                  id={column.id}
+                  isRowHeader={column.id === "name"}
+                  allowsSorting={column.sortable}
+                >
+                  {column.name}
+                </Table.Column>
+              )}
+            </Table.Header>
+            {!isLoading && sortedItems.length === 0 ? (
+              <Table.Body>
+                <Table.Row id="empty">
+                  <Table.Cell colSpan={columns.length}>
+                    <p className="py-10 text-center text-default-500">
+                      No products found
+                    </p>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            ) : isLoading && sortedItems.length === 0 ? (
+              <Table.Body key="initial-loading" aria-label="Loading" />
+            ) : (
+              <Table.Body key="loaded" items={sortedItems}>
+                {(item) => (
+                  <Table.Row
+                    columns={columns.map((c) => ({ id: c.id }))}
+                    id={item.id}
+                  >
+                    {(column) => (
+                      <Table.Cell>
+                        {renderCell(
+                          item,
+                          (column as { id: React.Key }).id
+                        )}
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                )}
+              </Table.Body>
             )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
   )
 }

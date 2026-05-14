@@ -17,12 +17,11 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Products</h1>
 
-          <Button
-            color="primary"
-            startContent={<IconPlus size={18} />}
-            onPress={() => onOpen("create")}
-          >
-            Create product
+          <Button variant="primary" onPress={() => onOpen("create")}>
+            <span className="flex items-center gap-2">
+              <IconPlus size={18} />
+              Create product
+            </span>
           </Button>
         </div>
 

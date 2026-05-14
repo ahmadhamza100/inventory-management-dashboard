@@ -2,52 +2,51 @@
 
 import orderBy from "lodash.orderby"
 import filter from "lodash.filter"
+import { useRouter } from "next/navigation"
 import { useMemo, useCallback } from "react"
 import { useCustomerModalStore } from "@/stores/use-customer-modal-store"
 import { useCustomersQuery } from "@/queries/use-customers-query"
 import { formatDate } from "@/utils/helpers"
 import { parseAsString, useQueryStates } from "nuqs"
 import { customerSortParser } from "@/utils/sorting-parsers"
-import { DateRangeFilter } from "@/app/(dashboard)/_components/date-range-filter"
+import { TableLoadingOverlay } from "@/components/table-loading-overlay"
+import { TableFilterDrawer } from "@/components/table-filter-drawer"
+import {
+  CustomerFiltersForm,
+  type CustomerFilterDraft
+} from "@/app/(dashboard)/_components/customer-filters-form"
 import type { Customer } from "@/db/schema"
 import {
-  IconSearch,
   IconAlertTriangle,
   IconRefresh,
   IconDotsVertical,
   IconFileInvoice,
   IconPencil,
-  IconTrash,
-  IconX
+  IconTrash
 } from "@tabler/icons-react"
 import {
   Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
   Spinner,
   Button,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
+  SearchField,
+  cn
 } from "@heroui/react"
+import type { SortDescriptor } from "@heroui/react"
 
 type CustomerWithInvoicesCount = Customer & { invoicesCount: number }
 
 const columns = [
-  { name: "NAME", uid: "name", sortable: true },
-  { name: "EMAIL", uid: "email", sortable: true },
-  { name: "PHONE", uid: "phone", sortable: true },
-  { name: "INVOICES", uid: "invoicesCount", sortable: true },
-  { name: "DATE", uid: "createdAt", sortable: true },
-  { name: "", uid: "actions", sortable: false }
-]
+  { name: "NAME", id: "name", sortable: true },
+  { name: "EMAIL", id: "email", sortable: true },
+  { name: "PHONE", id: "phone", sortable: true },
+  { name: "INVOICES", id: "invoicesCount", sortable: true },
+  { name: "DATE", id: "createdAt", sortable: true },
+  { name: "", id: "actions", sortable: false }
+] as const
 
 export function CustomersTable() {
+  const router = useRouter()
   const {
     data: customers,
     isLoading,
@@ -113,88 +112,112 @@ export function CustomersTable() {
     (customer: CustomerWithInvoicesCount, columnKey: React.Key) => {
       switch (columnKey) {
         case "name":
-          return <span className="text-sm font-medium">{customer.name}</span>
+          return (
+            <span className="block min-w-0 truncate text-sm font-medium">
+              {customer.name}
+            </span>
+          )
         case "email":
           return (
-            <span className="text-sm text-default-500">
+            <span className="block min-w-0 truncate text-sm text-default-500">
               {customer.email || "-"}
             </span>
           )
         case "phone":
           return (
-            <span className="text-sm text-default-500">
+            <span className="block min-w-0 truncate text-sm text-default-500">
               {customer.phone || "-"}
             </span>
           )
         case "invoicesCount":
           return (
-            <span className="text-sm font-medium tabular-nums">
+            <span className="text-sm font-medium tabular-nums whitespace-nowrap">
               {customer.invoicesCount}
             </span>
           )
         case "createdAt":
           return (
-            <span className="text-sm whitespace-nowrap text-default-500">
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-500">
               {formatDate(customer.createdAt)}
             </span>
           )
         case "actions":
           return (
             <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly size="sm" variant="light">
-                  <IconDotsVertical size={18} />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Customer actions">
-                <DropdownItem
-                  key="invoices"
-                  startContent={<IconFileInvoice size={16} />}
+              <Dropdown.Trigger aria-label="Customer actions">
+                <IconDotsVertical size={18} />
+              </Dropdown.Trigger>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Customer actions"
+                  onAction={(key) => {
+                    if (key === "invoices") {
+                      router.push(`/invoices?customer=${customer.id}`)
+                    } else if (key === "edit") {
+                      openCustomerModal("update", customer)
+                    } else if (key === "delete") {
+                      openCustomerModal("delete", customer)
+                    }
+                  }}
                 >
-                  View invoices
-                </DropdownItem>
-                <DropdownItem
-                  key="edit"
-                  startContent={<IconPencil size={16} />}
-                  onPress={() => openCustomerModal("update", customer)}
-                >
-                  Edit customer
-                </DropdownItem>
-                <DropdownItem
-                  key="delete"
-                  color="danger"
-                  className="text-danger"
-                  startContent={<IconTrash size={16} />}
-                  onPress={() => openCustomerModal("delete", customer)}
-                >
-                  Delete customer
-                </DropdownItem>
-              </DropdownMenu>
+                  <Dropdown.Item id="invoices" textValue="View invoices">
+                    <span className="flex items-center gap-2">
+                      <IconFileInvoice size={16} />
+                      View invoices
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item id="edit" textValue="Edit customer">
+                    <span className="flex items-center gap-2">
+                      <IconPencil size={16} />
+                      Edit customer
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="delete"
+                    textValue="Delete customer"
+                    variant="danger"
+                  >
+                    <span className="flex items-center gap-2">
+                      <IconTrash size={16} />
+                      Delete customer
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
             </Dropdown>
           )
         default:
           return null
       }
     },
-    [openCustomerModal]
+    [openCustomerModal, router]
   )
 
   const totalCount = customers?.length ?? 0
   const filteredCount = filteredItems.length
 
-  const hasActiveFilters = q.trim() !== "" || startDate !== "" || endDate !== ""
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (q.trim()) n += 1
+    if (startDate || endDate) n += 1
+    return n
+  }, [q, startDate, endDate])
 
-  const handleClearFilters = useCallback(() => {
-    setSearchParams({
-      q: "",
+  const committedFilters = useMemo(
+    (): CustomerFilterDraft => ({
+      startDate,
+      endDate
+    }),
+    [startDate, endDate]
+  )
+
+  const defaultCustomerFilters = useCallback(
+    (): CustomerFilterDraft => ({
       startDate: "",
-      endDate: "",
-      sort: {
-        column: "createdAt",
-        direction: "descending"
-      }
-    })
-  }, [setSearchParams])
+      endDate: ""
+    }),
+    []
+  )
 
   const topContent = useMemo(() => {
     return (
@@ -206,29 +229,38 @@ export function CustomersTable() {
               : `${filteredCount} of ${totalCount} customers`}
           </p>
         </div>
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <Input
-            isClearable
-            className="w-full sm:max-w-xs"
-            placeholder="Search by name, email, phone..."
-            startContent={<IconSearch size={18} className="text-default-400" />}
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+          <SearchField
+            className="min-w-0"
             value={q}
-            onClear={() => setSearchParams({ q: "" })}
-            onValueChange={(value) => setSearchParams({ q: value })}
-          />
+            onChange={(value) => setSearchParams({ q: value })}
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search by name, email, phone..." />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
 
-          <DateRangeFilter />
-
-          {hasActiveFilters && (
-            <Button
-              variant="flat"
-              color="danger"
-              startContent={<IconX size={16} />}
-              onPress={handleClearFilters}
-            >
-              Clear filters
-            </Button>
-          )}
+          <TableFilterDrawer<CustomerFilterDraft>
+            title="Filter customers"
+            description="Refine the list by created date."
+            activeCount={activeFilterCount}
+            committed={committedFilters}
+            getDefaultDraft={defaultCustomerFilters}
+            onApply={(d) =>
+              void setSearchParams({
+                startDate: d.startDate,
+                endDate: d.endDate
+              })
+            }
+            triggerClassName="w-full justify-center sm:w-auto"
+            rootClassName="w-full justify-center sm:w-auto"
+          >
+            {({ draft, setDraft }) => (
+              <CustomerFiltersForm draft={draft} setDraft={setDraft} />
+            )}
+          </TableFilterDrawer>
         </div>
       </div>
     )
@@ -237,9 +269,18 @@ export function CustomersTable() {
     filteredCount,
     totalCount,
     setSearchParams,
-    hasActiveFilters,
-    handleClearFilters
+    activeFilterCount,
+    committedFilters,
+    defaultCustomerFilters
   ])
+
+  const sortDescriptor: SortDescriptor = useMemo(
+    () => ({
+      column: sort.column,
+      direction: sort.direction
+    }),
+    [sort.column, sort.direction]
+  )
 
   if (isError) {
     return (
@@ -254,63 +295,96 @@ export function CustomersTable() {
           </p>
         </div>
         <Button
-          color="primary"
-          variant="flat"
-          startContent={!isFetching && <IconRefresh size={18} />}
-          isLoading={isFetching}
+          variant="secondary"
+          isDisabled={isFetching}
           onPress={() => refetch()}
         >
-          Try again
+          <span className="flex items-center justify-center gap-2">
+            {isFetching ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconRefresh size={18} />
+                Try again
+              </>
+            )}
+          </span>
         </Button>
       </div>
     )
   }
 
   return (
-    <Table
-      aria-label="Customers table"
-      topContent={topContent}
-      topContentPlacement="outside"
-      sortDescriptor={{
-        column: sort.column,
-        direction: sort.direction
-      }}
-      onSortChange={({ column, direction }) => {
-        const isSameColumn = column === sort.column
-
-        setSearchParams({
-          sort: {
-            column: column as typeof sort.column,
-            direction: isSameColumn
-              ? (direction as typeof sort.direction)
-              : "descending"
-          }
-        })
-      }}
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} allowsSorting={column.sortable}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody
-        items={sortedItems}
-        isLoading={isLoading}
-        emptyContent={<p className="text-default-500">No customers found</p>}
-        loadingContent={
-          <Spinner className="pt-10" label="Loading customers..." />
-        }
-      >
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
+    <div className="flex flex-col gap-4">
+      {topContent}
+      <Table aria-label="Customers table">
+        <Table.ScrollContainer
+          className={cn(
+            "relative min-w-0",
+            isLoading && sortedItems.length === 0 && "min-h-[200px]"
+          )}
+        >
+          <TableLoadingOverlay
+            show={isLoading}
+            label="Loading customers"
+          />
+          <Table.Content
+            sortDescriptor={sortDescriptor}
+            onSortChange={(descriptor) => {
+              setSearchParams({
+                sort: {
+                  column: descriptor.column as (typeof sort)["column"],
+                  direction: descriptor.direction as (typeof sort)["direction"]
+                }
+              })
+            }}
+            className={cn(isLoading && "pointer-events-none opacity-40")}
+          >
+            <Table.Header columns={[...columns]}>
+              {(column) => (
+                <Table.Column
+                  id={column.id}
+                  isRowHeader={column.id === "name"}
+                  allowsSorting={column.sortable}
+                >
+                  {column.name}
+                </Table.Column>
+              )}
+            </Table.Header>
+            {!isLoading && sortedItems.length === 0 ? (
+              <Table.Body>
+                <Table.Row id="empty">
+                  <Table.Cell colSpan={columns.length}>
+                    <p className="py-10 text-center text-default-500">
+                      No customers found
+                    </p>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            ) : isLoading && sortedItems.length === 0 ? (
+              <Table.Body key="initial-loading" aria-label="Loading" />
+            ) : (
+              <Table.Body key="loaded" items={sortedItems}>
+                {(item) => (
+                  <Table.Row
+                    columns={columns.map((c) => ({ id: c.id }))}
+                    id={item.id}
+                  >
+                    {(column) => (
+                      <Table.Cell>
+                        {renderCell(
+                          item,
+                          (column as { id: React.Key }).id
+                        )}
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                )}
+              </Table.Body>
             )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
   )
 }

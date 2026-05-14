@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@heroui/react"
+import { Button, Spinner } from "@heroui/react"
 import { IconBan, IconLogout } from "@tabler/icons-react"
 import { useLogout } from "@/mutations/use-logout"
 
@@ -38,16 +38,20 @@ export default function BannedPage() {
         {/* Action */}
         <div className="space-y-4">
           <Button
-            color="danger"
+            variant="danger"
             size="lg"
             className="w-full"
-            startContent={
-              isLoggingOut ? null : <IconLogout size={20} />
-            }
             onPress={() => logout()}
-            isLoading={isLoggingOut}
+            isDisabled={isLoggingOut}
           >
-            {isLoggingOut ? "Logging out..." : "Log Out"}
+            {isLoggingOut ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconLogout size={20} className="mr-2 inline shrink-0" />
+                Log out
+              </>
+            )}
           </Button>
           <p className="text-xs text-default-400">
             If you believe this is an error, please contact support.

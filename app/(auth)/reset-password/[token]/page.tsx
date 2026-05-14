@@ -5,9 +5,8 @@ import { Link } from "@/components/link"
 import { newPasswordSchema } from "@/validations/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { addToast, Button } from "@heroui/react"
+import { Button, TextField, Input, FieldError, toast } from "@heroui/react"
 import { Logo } from "@/components/logo"
-import { PasswordInput } from "@/components/password-input"
 import { createClient } from "@/utils/supabase/client"
 import { ROUTES } from "@/utils/routes"
 import { FormError } from "@/components/form-error"
@@ -32,10 +31,7 @@ export default function NewPasswordPage() {
     if (error) {
       form.setError("root", { message: error.message })
     } else {
-      addToast({
-        title: "Password updated",
-        color: "success"
-      })
+      toast.success("Password updated")
       router.push(ROUTES.dashboard)
     }
   })
@@ -56,15 +52,22 @@ export default function NewPasswordPage() {
           control={form.control}
           name="newPassword"
           render={({ field, fieldState }) => (
-            <PasswordInput
-              {...field}
-              label="New password"
-              labelPlacement="outside"
-              placeholder="••••••••"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isSubmitting}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input
+                type="password"
+                placeholder="••••••••"
+                aria-label="New password"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
@@ -72,30 +75,42 @@ export default function NewPasswordPage() {
           control={form.control}
           name="confirmPassword"
           render={({ field, fieldState }) => (
-            <PasswordInput
-              {...field}
-              label="Confirm password"
-              labelPlacement="outside"
-              placeholder="••••••••"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isSubmitting}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input
+                type="password"
+                placeholder="••••••••"
+                aria-label="Confirm password"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
         <Button
           type="submit"
-          color="primary"
+          variant="primary"
           className="w-full"
-          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
         >
-          Reset password
+          {isSubmitting ? "Resetting password…" : "Reset password"}
         </Button>
       </form>
 
       <div className="flex items-center justify-center">
-        <Link size="sm" href={ROUTES.login} isDisabled={isSubmitting}>
+        <Link
+          href={ROUTES.login}
+          className="text-sm"
+          aria-disabled={isSubmitting}
+          tabIndex={isSubmitting ? -1 : undefined}
+        >
           Back to sign in
         </Link>
       </div>

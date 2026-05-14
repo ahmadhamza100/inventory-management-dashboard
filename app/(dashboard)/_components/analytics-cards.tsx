@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardBody, cn, Skeleton } from "@heroui/react"
+import { Skeleton } from "@heroui/react"
 import { useAnalyticsCardsQuery } from "@/queries/use-analytics-cards-query"
 import { formatPrice } from "@/utils/helpers"
 import {
@@ -19,8 +19,6 @@ export function AnalyticsCards() {
     title: string
     value: number
     icon: typeof IconCalendar
-    bgColor: string
-    iconColor: string
     trend?: number
     format: (val: number) => string
     subInfo?: {
@@ -34,46 +32,34 @@ export function AnalyticsCards() {
 
   const cards: CardConfig[] = [
     {
-      title: "Monthly Sales",
+      title: "Monthly sales",
       value: data?.monthlySales ?? 0,
       icon: IconCalendar,
-      bgColor: "bg-primary/10",
-      iconColor: "text-primary",
       trend: data?.monthlyGrowth ?? 0,
       format: (val: number) => formatPrice(val)
     },
     {
-      title: "Today Sales",
+      title: "Today sales",
       value: data?.todaySales ?? 0,
       icon: IconCurrencyDollar,
-      bgColor: "bg-success/10",
-      iconColor: "text-success",
       format: (val: number) => formatPrice(val)
     },
     {
-      title: "Total Customers",
+      title: "Customers",
       value: data?.totalCustomers ?? 0,
       icon: IconUsers,
-      bgColor: "bg-secondary/10",
-      iconColor: "text-secondary",
       format: (val: number) => val.toLocaleString()
     },
     {
-      title: "Monthly Growth",
+      title: "Monthly growth",
       value: data?.monthlyGrowth ?? 0,
       icon: IconTrendingUp,
-      bgColor: "bg-warning/10",
-      iconColor: "text-warning",
       format: (val: number) => `${val >= 0 ? "+" : ""}${val.toFixed(1)}%`
     },
     {
-      title: "Daily Transactions Flow",
+      title: "Daily transaction flow",
       value: dailyTransactions?.flow ?? 0,
       icon: IconTransactionDollar,
-      bgColor:
-        (dailyTransactions?.flow ?? 0) >= 0 ? "bg-success/10" : "bg-danger/10",
-      iconColor:
-        (dailyTransactions?.flow ?? 0) >= 0 ? "text-success" : "text-danger",
       format: (val: number) =>
         `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`,
       subInfo: {
@@ -82,15 +68,9 @@ export function AnalyticsCards() {
       }
     },
     {
-      title: "Monthly Transactions Flow",
+      title: "Monthly transaction flow",
       value: monthlyTransactions?.flow ?? 0,
       icon: IconTransactionDollar,
-      bgColor:
-        (monthlyTransactions?.flow ?? 0) >= 0
-          ? "bg-success/10"
-          : "bg-danger/10",
-      iconColor:
-        (monthlyTransactions?.flow ?? 0) >= 0 ? "text-success" : "text-danger",
       format: (val: number) =>
         `${val >= 0 ? "+" : ""}${formatPrice(Math.abs(val))}`,
       subInfo: {
@@ -102,79 +82,73 @@ export function AnalyticsCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
-          <Card key={card.title} className="min-h-40">
-            <CardBody className="p-6">
-              <Skeleton className="mb-2 h-4 w-24 rounded-lg" />
-              <Skeleton className="mb-2 h-8 w-32 rounded-lg" />
-              <Skeleton className="h-3 w-16 rounded-lg" />
-            </CardBody>
-          </Card>
+          <div
+            key={card.title}
+            className="rounded-lg border border-divider/60 bg-surface px-4 py-3"
+          >
+            <Skeleton className="mb-2 h-3 w-24 rounded" />
+            <Skeleton className="h-6 w-32 rounded" />
+          </div>
         ))}
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => {
         const Icon = card.icon
         const isPositive = card.trend !== undefined ? card.trend >= 0 : true
 
         return (
-          <Card key={card.title} className="border border-divider">
-            <CardBody className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm font-medium text-default-500">
-                  {card.title}
-                </p>
-                <div
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-lg",
-                    card.bgColor
-                  )}
+          <div
+            key={card.title}
+            className="rounded-lg border border-divider/60 bg-surface px-4 py-3 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-medium text-default-500">{card.title}</p>
+              <Icon
+                size={16}
+                className="mt-0.5 shrink-0 text-default-400"
+                aria-hidden
+              />
+            </div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p className="text-lg font-semibold tracking-tight text-foreground tabular-nums">
+                {card.format(card.value)}
+              </p>
+              {card.trend !== undefined && (
+                <span
+                  className={
+                    isPositive
+                      ? "inline-flex items-center gap-0.5 text-xs font-medium text-success"
+                      : "inline-flex items-center gap-0.5 text-xs font-medium text-danger"
+                  }
                 >
-                  <Icon size={20} className={card.iconColor} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="text-2xl font-semibold">
-                    {card.format(card.value)}
-                  </p>
-                  {card.trend !== undefined && (
-                    <div
-                      className={cn(
-                        "flex items-center gap-1 text-xs font-medium",
-                        isPositive ? "text-success" : "text-danger"
-                      )}
-                    >
-                      {isPositive ? (
-                        <IconTrendingUp size={14} />
-                      ) : (
-                        <IconTrendingDown size={14} />
-                      )}
-                      <span>{Math.abs(card.trend).toFixed(1)}%</span>
-                    </div>
+                  {isPositive ? (
+                    <IconTrendingUp size={12} aria-hidden />
+                  ) : (
+                    <IconTrendingDown size={12} aria-hidden />
                   )}
-
-                  {card.subInfo && (
-                    <div className="flex items-center gap-2 text-[10px] font-medium text-default-400">
-                      <div className="flex items-center gap-0.5 text-success/80">
-                        <IconTrendingUp size={12} />
-                        <span>{formatPrice(card.subInfo.in)}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5 text-danger/80">
-                        <IconTrendingDown size={12} />
-                        <span>{formatPrice(card.subInfo.out)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+                  {Math.abs(card.trend).toFixed(1)}%
+                </span>
+              )}
+              {card.subInfo && (
+                <span className="flex items-center gap-2 text-[11px] text-default-400">
+                  <span className="inline-flex items-center gap-0.5 text-success">
+                    <IconTrendingUp size={11} aria-hidden />
+                    {formatPrice(card.subInfo.in)}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5 text-danger">
+                    <IconTrendingDown size={11} aria-hidden />
+                    {formatPrice(card.subInfo.out)}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
         )
       })}
     </div>

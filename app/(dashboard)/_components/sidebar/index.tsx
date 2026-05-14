@@ -25,7 +25,7 @@ export function Sidebar() {
           !isOpen && "justify-center px-2"
         )}
       >
-        <Logo showText={isOpen} />
+        <Logo showText={isOpen} className={cn(!isOpen && "w-full justify-center")} />
       </div>
 
       {/* Navigation */}

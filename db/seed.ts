@@ -7,9 +7,10 @@ import {
   invoiceItems,
   invoices,
   products,
+  productSkuCounters,
   transactions
 } from "./schema"
-import { generateSKU, generateInvoiceId } from "@/utils/helpers"
+import { formatProductSku, generateInvoiceId } from "@/utils/helpers"
 
 const productNames = [
   "Wireless Headphones",
@@ -158,7 +159,7 @@ async function seed() {
   const seededProducts = await db
     .insert(products)
     .values(
-      productNames.map((name) => {
+      productNames.map((name, index) => {
         const monthsAgo = randomInt(1, 12)
         const targetMonth = currentMonth - monthsAgo
         const year = targetMonth < 0 ? currentYear - 1 : currentYear
@@ -173,7 +174,7 @@ async function seed() {
           name,
           price: randomFloat(10, 500).toString(),
           stock: randomInt(0, 200),
-          sku: generateSKU(),
+          sku: formatProductSku(index + 1),
           images:
             Math.random() > 0.3
               ? [`https://picsum.photos/400/400?random=${Math.random()}`]
@@ -186,6 +187,11 @@ async function seed() {
     .returning()
 
   console.log(`✅ Created ${seededProducts.length} products`)
+
+  await db.insert(productSkuCounters).values({
+    adminId,
+    nextValue: seededProducts.length + 1
+  })
 
   console.log("🧾 Preparing invoice data across the last 12 months...")
 

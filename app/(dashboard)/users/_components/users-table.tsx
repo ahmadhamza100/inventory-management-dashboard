@@ -9,8 +9,13 @@ import { formatDate } from "@/utils/helpers"
 import { parseAsString, parseAsStringEnum, useQueryStates } from "nuqs"
 import { isBanned } from "@/utils/auth"
 import type { User } from "@/queries/use-users-query"
+import { TableLoadingOverlay } from "@/components/table-loading-overlay"
+import { TableFilterDrawer } from "@/components/table-filter-drawer"
 import {
-  IconSearch,
+  UserFiltersForm,
+  type UserFilterDraft
+} from "@/app/(dashboard)/_components/user-filters-form"
+import {
   IconAlertTriangle,
   IconRefresh,
   IconDotsVertical,
@@ -18,36 +23,27 @@ import {
   IconBan,
   IconLockOpen,
   IconTrash,
-  IconKey,
-  IconX
+  IconKey
 } from "@tabler/icons-react"
 import {
   Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
   Spinner,
   Chip,
-  Select,
-  SelectItem,
   Button,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem
+  SearchField,
+  cn
 } from "@heroui/react"
+import type { SortDescriptor } from "@heroui/react"
 
 const columns = [
-  { name: "NAME", uid: "name", sortable: true },
-  { name: "EMAIL", uid: "email", sortable: true },
-  { name: "ROLE", uid: "role", sortable: true },
-  { name: "STATUS", uid: "status", sortable: false },
-  { name: "DATE", uid: "created_at", sortable: true },
-  { name: "", uid: "actions", sortable: false }
-]
+  { name: "NAME", id: "name", sortable: true },
+  { name: "EMAIL", id: "email", sortable: true },
+  { name: "ROLE", id: "role", sortable: true },
+  { name: "STATUS", id: "status", sortable: false },
+  { name: "DATE", id: "created_at", sortable: true },
+  { name: "", id: "actions", sortable: false }
+] as const
 
 export function UsersTable() {
   const {
@@ -61,8 +57,12 @@ export function UsersTable() {
   const openUserModal = useUserModalStore((state) => state.onOpen)
   const [{ q, role, status, sort }, setSearchParams] = useQueryStates({
     q: parseAsString.withDefault(""),
-    role: parseAsStringEnum(["all", "admin", "staff", "user"]).withDefault("all"),
-    status: parseAsStringEnum(["all", "active", "banned"]).withDefault("all"),
+    role: parseAsStringEnum(["all", "admin", "staff", "user"]).withDefault(
+      "all"
+    ),
+    status: parseAsStringEnum(["all", "active", "banned"]).withDefault(
+      "all"
+    ),
     sort: parseAsString.withDefault("created_at:desc")
   })
 
@@ -111,15 +111,23 @@ export function UsersTable() {
     (user: User, columnKey: React.Key) => {
       switch (columnKey) {
         case "name":
-          return <span className="text-sm font-medium">{user.name}</span>
+          return (
+            <span className="block min-w-0 truncate text-sm font-medium">
+              {user.name}
+            </span>
+          )
         case "email":
-          return <span className="text-sm text-default-500">{user.email}</span>
+          return (
+            <span className="block min-w-0 truncate text-sm text-default-500">
+              {user.email}
+            </span>
+          )
         case "role":
           return (
             <Chip
               size="sm"
-              variant="flat"
-              color={user.role === "admin" ? "primary" : "default"}
+              variant="soft"
+              color={user.role === "admin" ? "accent" : "default"}
             >
               {user.role}
             </Chip>
@@ -128,7 +136,7 @@ export function UsersTable() {
           return (
             <Chip
               size="sm"
-              variant="flat"
+              variant="soft"
               color={isBanned(user) ? "danger" : "success"}
             >
               {isBanned(user) ? "Banned" : "Active"}
@@ -136,62 +144,76 @@ export function UsersTable() {
           )
         case "created_at":
           return (
-            <span className="text-sm whitespace-nowrap text-default-500">
+            <span className="text-sm tabular-nums whitespace-nowrap text-default-500">
               {formatDate(user.created_at)}
             </span>
           )
         case "actions":
           return (
             <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly size="sm" variant="light">
-                  <IconDotsVertical size={18} />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="User actions">
-                <DropdownItem
-                  key="change-password"
-                  startContent={<IconKey size={16} />}
-                  onPress={() => openUserModal("change-password", user)}
+              <Dropdown.Trigger aria-label="User actions">
+                <IconDotsVertical size={18} />
+              </Dropdown.Trigger>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="User actions"
+                  onAction={(key) => {
+                    if (key === "change-password") {
+                      openUserModal("change-password", user)
+                    } else if (key === "edit") {
+                      openUserModal("update", user)
+                    } else if (key === "ban") {
+                      openUserModal("ban", user)
+                    } else if (key === "unban") {
+                      openUserModal("unban", user)
+                    } else if (key === "delete") {
+                      openUserModal("delete", user)
+                    }
+                  }}
                 >
-                  Change Password
-                </DropdownItem>
-                <DropdownItem
-                  key="edit"
-                  startContent={<IconPencil size={16} />}
-                  onPress={() => openUserModal("update", user)}
-                >
-                  Edit user
-                </DropdownItem>
-                {!isBanned(user) ? (
-                  <DropdownItem
-                    key="ban"
-                    color="danger"
-                    className="text-danger"
-                    startContent={<IconBan size={16} />}
-                    onPress={() => openUserModal("ban", user)}
+                  <Dropdown.Item id="change-password" textValue="Change password">
+                    <span className="flex items-center gap-2">
+                      <IconKey size={16} />
+                      Change Password
+                    </span>
+                  </Dropdown.Item>
+                  <Dropdown.Item id="edit" textValue="Edit user">
+                    <span className="flex items-center gap-2">
+                      <IconPencil size={16} />
+                      Edit user
+                    </span>
+                  </Dropdown.Item>
+                  {!isBanned(user) ? (
+                    <Dropdown.Item
+                      id="ban"
+                      textValue="Ban user"
+                      variant="danger"
+                    >
+                      <span className="flex items-center gap-2">
+                        <IconBan size={16} />
+                        Ban user
+                      </span>
+                    </Dropdown.Item>
+                  ) : (
+                    <Dropdown.Item id="unban" textValue="Unban user">
+                      <span className="flex items-center gap-2">
+                        <IconLockOpen size={16} />
+                        Unban user
+                      </span>
+                    </Dropdown.Item>
+                  )}
+                  <Dropdown.Item
+                    id="delete"
+                    textValue="Delete user"
+                    variant="danger"
                   >
-                    Ban user
-                  </DropdownItem>
-                ) : (
-                  <DropdownItem
-                    key="unban"
-                    startContent={<IconLockOpen size={16} />}
-                    onPress={() => openUserModal("unban", user)}
-                  >
-                    Unban user
-                  </DropdownItem>
-                )}
-                <DropdownItem
-                  key="delete"
-                  color="danger"
-                  className="text-danger"
-                  startContent={<IconTrash size={16} />}
-                  onPress={() => openUserModal("delete", user)}
-                >
-                  Delete user
-                </DropdownItem>
-              </DropdownMenu>
+                    <span className="flex items-center gap-2">
+                      <IconTrash size={16} />
+                      Delete user
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
             </Dropdown>
           )
         default:
@@ -204,19 +226,29 @@ export function UsersTable() {
   const totalCount = users?.length ?? 0
   const filteredCount = filteredItems.length
 
-  type Role = NonNullable<typeof role>
-  type Status = NonNullable<typeof status>
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (q.trim()) n += 1
+    if (role !== "all") n += 1
+    if (status !== "all") n += 1
+    return n
+  }, [q, role, status])
 
-  const hasActiveFilters = q.trim() !== "" || role !== "all" || status !== "all"
+  const committedFilters = useMemo(
+    (): UserFilterDraft => ({
+      role,
+      status
+    }),
+    [role, status]
+  )
 
-  const handleClearFilters = useCallback(() => {
-    setSearchParams({
-      q: "",
+  const defaultUserFilters = useCallback(
+    (): UserFilterDraft => ({
       role: "all",
-      status: "all",
-      sort: "created_at:desc"
-    })
-  }, [setSearchParams])
+      status: "all"
+    }),
+    []
+  )
 
   const handleSortChange = useCallback(
     (column: string, direction: "ascending" | "descending") => {
@@ -236,67 +268,59 @@ export function UsersTable() {
               : `${filteredCount} of ${totalCount} users`}
           </p>
         </div>
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <Input
-            isClearable
-            className="w-full sm:max-w-xs"
-            placeholder="Search by name or email..."
-            startContent={<IconSearch size={18} className="text-default-400" />}
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+          <SearchField
+            className="min-w-0"
             value={q}
-            onClear={() => setSearchParams({ q: "" })}
-            onValueChange={(value) => setSearchParams({ q: value })}
-          />
-          <Select
-            className="w-full sm:w-40"
-            selectedKeys={[role]}
-            aria-label="Filter by role"
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0]
-              setSearchParams({ role: selected as Role })
-            }}
+            onChange={(value) => setSearchParams({ q: value })}
           >
-            <SelectItem key="all">All Roles</SelectItem>
-            <SelectItem key="admin">Admin</SelectItem>
-          <SelectItem key="staff">Staff</SelectItem>
-          <SelectItem key="user">User (legacy)</SelectItem>
-          </Select>
-          <Select
-            className="w-full sm:w-40"
-            selectedKeys={[status]}
-            aria-label="Filter by status"
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0]
-              setSearchParams({ status: selected as Status })
-            }}
-          >
-            <SelectItem key="all">All Status</SelectItem>
-            <SelectItem key="active">Active</SelectItem>
-            <SelectItem key="banned">Banned</SelectItem>
-          </Select>
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search by name or email..." />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
 
-          {hasActiveFilters && (
-            <Button
-              variant="flat"
-              color="danger"
-              startContent={<IconX size={16} />}
-              onPress={handleClearFilters}
-            >
-              Clear filters
-            </Button>
-          )}
+          <TableFilterDrawer<UserFilterDraft>
+            title="Filter users"
+            description="Role and account status."
+            activeCount={activeFilterCount}
+            committed={committedFilters}
+            getDefaultDraft={defaultUserFilters}
+            onApply={(d) =>
+              void setSearchParams({
+                role: d.role,
+                status: d.status
+              })
+            }
+            triggerClassName="w-full justify-center sm:w-auto"
+            rootClassName="w-full justify-center sm:w-auto"
+          >
+            {({ draft, setDraft }) => (
+              <UserFiltersForm draft={draft} setDraft={setDraft} />
+            )}
+          </TableFilterDrawer>
         </div>
       </div>
     )
   }, [
     q,
-    role,
-    status,
     filteredCount,
     totalCount,
     setSearchParams,
-    hasActiveFilters,
-    handleClearFilters
+    activeFilterCount,
+    committedFilters,
+    defaultUserFilters
   ])
+
+  const sortDescriptor: SortDescriptor = useMemo(
+    () => ({
+      column: parsedSort.column,
+      direction:
+        parsedSort.direction === "asc" ? "ascending" : "descending"
+    }),
+    [parsedSort.column, parsedSort.direction]
+  )
 
   if (isError) {
     return (
@@ -311,57 +335,91 @@ export function UsersTable() {
           </p>
         </div>
         <Button
-          color="primary"
-          variant="flat"
-          startContent={!isFetching && <IconRefresh size={18} />}
-          isLoading={isFetching}
+          variant="secondary"
+          isDisabled={isFetching}
           onPress={() => refetch()}
         >
-          Try again
+          <span className="flex items-center justify-center gap-2">
+            {isFetching ? (
+              <Spinner size="sm" color="current" />
+            ) : (
+              <>
+                <IconRefresh size={18} />
+                Try again
+              </>
+            )}
+          </span>
         </Button>
       </div>
     )
   }
 
   return (
-    <Table
-      aria-label="Users table"
-      topContent={topContent}
-      topContentPlacement="outside"
-      sortDescriptor={{
-        column: parsedSort.column,
-        direction: parsedSort.direction === "asc" ? "ascending" : "descending"
-      }}
-      onSortChange={(descriptor) => {
-        if (descriptor.column) {
-          handleSortChange(
-            descriptor.column as string,
-            descriptor.direction || "descending"
-          )
-        }
-      }}
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} allowsSorting={column.sortable}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody
-        items={sortedItems}
-        isLoading={isLoading}
-        emptyContent={<p className="text-default-500">No users found</p>}
-        loadingContent={<Spinner className="pt-10" label="Loading users..." />}
-      >
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
+    <div className="flex flex-col gap-4">
+      {topContent}
+      <Table aria-label="Users table">
+        <Table.ScrollContainer
+          className={cn(
+            "relative min-w-0",
+            isLoading && sortedItems.length === 0 && "min-h-[200px]"
+          )}
+        >
+          <TableLoadingOverlay show={isLoading} label="Loading users" />
+          <Table.Content
+            sortDescriptor={sortDescriptor}
+            onSortChange={(descriptor) => {
+              handleSortChange(
+                String(descriptor.column),
+                descriptor.direction ?? "descending"
+              )
+            }}
+            className={cn(isLoading && "pointer-events-none opacity-40")}
+          >
+            <Table.Header columns={[...columns]}>
+              {(column) => (
+                <Table.Column
+                  id={column.id}
+                  isRowHeader={column.id === "name"}
+                  allowsSorting={column.sortable}
+                >
+                  {column.name}
+                </Table.Column>
+              )}
+            </Table.Header>
+            {!isLoading && sortedItems.length === 0 ? (
+              <Table.Body>
+                <Table.Row id="empty">
+                  <Table.Cell colSpan={columns.length}>
+                    <p className="py-10 text-center text-default-500">
+                      No users found
+                    </p>
+                  </Table.Cell>
+                </Table.Row>
+              </Table.Body>
+            ) : isLoading && sortedItems.length === 0 ? (
+              <Table.Body key="initial-loading" aria-label="Loading" />
+            ) : (
+              <Table.Body key="loaded" items={sortedItems}>
+                {(item) => (
+                  <Table.Row
+                    columns={columns.map((c) => ({ id: c.id }))}
+                    id={item.id}
+                  >
+                    {(column) => (
+                      <Table.Cell>
+                        {renderCell(
+                          item,
+                          (column as { id: React.Key }).id
+                        )}
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                )}
+              </Table.Body>
             )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
   )
 }

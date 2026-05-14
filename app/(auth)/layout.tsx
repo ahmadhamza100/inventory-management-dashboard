@@ -1,6 +1,13 @@
+import { cn } from "@heroui/react"
+
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
+    <main
+      className={cn(
+        "flex min-h-svh items-center justify-center bg-background p-4",
+        "text-foreground"
+      )}
+    >
       {children}
     </main>
   )

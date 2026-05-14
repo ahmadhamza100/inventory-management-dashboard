@@ -5,7 +5,7 @@ import { cn } from "@heroui/react"
 import { Geist, Geist_Mono } from "next/font/google"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
 
-import { HeroUIProvider } from "@/providers/hero-ui-provider"
+import { ToastProvider } from "@/providers/toast-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { QueryProvider } from "@/providers/query-provider"
 
@@ -40,9 +40,10 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ThemeProvider>
-            <HeroUIProvider>
+            <>
+              <ToastProvider />
               <NuqsAdapter>{children}</NuqsAdapter>
-            </HeroUIProvider>
+            </>
           </ThemeProvider>
         </QueryProvider>
       </body>

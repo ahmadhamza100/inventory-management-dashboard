@@ -114,6 +114,13 @@ export const invoiceCounters = pgTable("invoice_counters", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 })
 
+/** Per-admin monotonic SKU sequence (format `SKU-000001`). */
+export const productSkuCounters = pgTable("product_sku_counters", {
+  adminId: text("admin_id").primaryKey().notNull(),
+  nextValue: integer("next_value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+})
+
 export const transactionTypeEnum = pgEnum("transaction_type_enum", [
   "cash_in",
   "cash_out"

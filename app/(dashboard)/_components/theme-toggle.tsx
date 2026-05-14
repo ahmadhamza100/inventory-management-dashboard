@@ -10,16 +10,21 @@ export function ThemeToggle() {
   const isDark = resolvedTheme === "dark"
 
   return (
-    <Tooltip content={isDark ? "Light mode" : "Dark mode"} delay={0}>
-      <Button
-        isIconOnly
-        variant="light"
-        size="sm"
-        onPress={() => setTheme(isDark ? "light" : "dark")}
-      >
-        <IconSunFilled className="size-4 dark:hidden" />
-        <IconMoonFilled className="hidden size-4 dark:block" />
-      </Button>
+    <Tooltip>
+      <Tooltip.Trigger>
+        <Button
+          isIconOnly
+          variant="ghost"
+          size="sm"
+          onPress={() => setTheme(isDark ? "light" : "dark")}
+        >
+          <IconSunFilled className="size-4 dark:hidden" />
+          <IconMoonFilled className="hidden size-4 dark:block" />
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        {isDark ? "Light mode" : "Dark mode"}
+      </Tooltip.Content>
     </Tooltip>
   )
 }

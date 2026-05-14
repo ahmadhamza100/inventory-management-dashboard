@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { api } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query"
@@ -9,15 +9,25 @@ import { transactionTypeEnum } from "@/db/schema"
 import { gerErrorMessage } from "@/utils/error-handler"
 import { FormError } from "@/components/form-error"
 import { FORMAT_CURRENCY_OPTS, toSentenceCase } from "@/utils/helpers"
-import { today, getLocalTimeZone, CalendarDate } from "@internationalized/date"
+import {
+  today,
+  getLocalTimeZone,
+  CalendarDate
+} from "@internationalized/date"
 import {
   Button,
-  NumberInput,
-  Select,
-  SelectItem,
+  Calendar,
+  DateField,
   DatePicker,
+  FieldError,
+  ListBox,
+  NumberField,
+  Select,
+  Spinner,
+  TextField,
   Input,
-  addToast
+  toast,
+  cn
 } from "@heroui/react"
 import {
   type TransactionSchema,
@@ -54,46 +64,53 @@ export function TransactionForm() {
     defaultValues
   })
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      if (isEditing && transaction) {
-        await api.transactions[":id"].$patch({
-          json: values,
-          param: { id: transaction.id }
-        })
-        addToast({
-          title: "Transaction updated successfully",
-          color: "success"
-        })
-      } else {
-        await api.transactions.$post({ json: values })
-        addToast({
-          title: "Transaction created successfully",
-          color: "success"
+  const onSubmit = useCallback(
+    async (values: TransactionSchema) => {
+      try {
+        if (isEditing && transaction) {
+          await api.transactions[":id"].$patch({
+            json: values,
+            param: { id: transaction.id }
+          })
+          toast.success("Transaction updated successfully")
+        } else {
+          await api.transactions.$post({ json: values })
+          toast.success("Transaction created successfully")
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        onClose()
+      } catch (error) {
+        form.setError("root", {
+          message: gerErrorMessage(
+            error,
+            isEditing
+              ? "Failed to update transaction"
+              : "Failed to create transaction"
+          )
         })
       }
-
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      onClose()
-    } catch (error) {
-      form.setError("root", {
-        message: gerErrorMessage(
-          error,
-          isEditing
-            ? "Failed to update transaction"
-            : "Failed to create transaction"
-        )
-      })
-    }
-  })
+    },
+    [form, isEditing, onClose, queryClient, transaction]
+  )
 
   const isPending = form.formState.isSubmitting
 
-  useEffect(() => {
-    return () => {
-      form.reset(defaultValues)
+  const requestSubmitWithBlur = useCallback(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) {
+      active.blur()
     }
-  }, [form, defaultValues])
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void form.handleSubmit(onSubmit)()
+      })
+    })
+  }, [form, onSubmit])
+
+  useEffect(() => {
+    form.reset(defaultValues)
+  }, [defaultValues, form])
 
   const tz = getLocalTimeZone()
 
@@ -101,29 +118,50 @@ export function TransactionForm() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
+      <form
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        onSubmit={(e) => {
+          e.preventDefault()
+          requestSubmitWithBlur()
+        }}
+        noValidate
+      >
         <FormError form={form} />
 
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
           <Controller
             control={form.control}
             name="type"
             render={({ field, fieldState }) => (
               <Select
-                label="Type"
-                labelPlacement="outside"
-                selectedKeys={field.value ? [field.value] : []}
+                fullWidth
+                aria-label="Transaction type"
                 isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
                 isDisabled={isPending}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0]
-                  if (selected) field.onChange(selected)
+                selectedKey={field.value}
+                onSelectionChange={(key) => {
+                  if (key) field.onChange(String(key))
                 }}
               >
-                {transactionTypeEnum.enumValues.map((type) => (
-                  <SelectItem key={type}>{toSentenceCase(type)}</SelectItem>
-                ))}
+                <FieldError>{fieldState.error?.message}</FieldError>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    {transactionTypeEnum.enumValues.map((typeVal) => (
+                      <ListBox.Item
+                        key={typeVal}
+                        id={typeVal}
+                        textValue={toSentenceCase(typeVal)}
+                      >
+                        {toSentenceCase(typeVal)}
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
               </Select>
             )}
           />
@@ -132,27 +170,58 @@ export function TransactionForm() {
             control={form.control}
             name="date"
             render={({ field, fieldState }) => {
-              const date = new Date(field.value as string)
-
-              const calendarDate = new CalendarDate(
-                date.getFullYear(),
-                date.getMonth() + 1,
-                date.getDate()
+              const dateObj = new Date(field.value as string)
+              const calDate = new CalendarDate(
+                dateObj.getFullYear(),
+                dateObj.getMonth() + 1,
+                dateObj.getDate()
               )
-
               return (
                 <DatePicker
-                  label="Date"
-                  labelPlacement="outside"
-                  value={calendarDate}
-                  maxValue={maxValue}
-                  isInvalid={fieldState.invalid}
-                  errorMessage={fieldState.error?.message}
-                  isDisabled={isPending}
-                  onChange={(value) =>
-                    field.onChange(value ? value.toDate(tz) : undefined)
+                  className="w-full min-w-0"
+                  value={calDate}
+                  onChange={(v) =>
+                    field.onChange(v ? v.toDate(tz) : undefined)
                   }
-                />
+                  maxValue={maxValue}
+                  isDisabled={isPending}
+                  isInvalid={fieldState.invalid}
+                  granularity="day"
+                  aria-label="Transaction date"
+                >
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                  <DateField.Group>
+                    <DateField.Input>
+                      {(segment) => (
+                        <DateField.Segment segment={segment} />
+                      )}
+                    </DateField.Input>
+                    <DateField.Suffix>
+                      <DatePicker.Trigger>
+                        <DatePicker.TriggerIndicator />
+                      </DatePicker.Trigger>
+                    </DateField.Suffix>
+                  </DateField.Group>
+                  <DatePicker.Popover>
+                    <Calendar aria-label="Transaction date">
+                      <Calendar.Header>
+                        <Calendar.Heading />
+                        <Calendar.NavButton slot="previous" />
+                        <Calendar.NavButton slot="next" />
+                      </Calendar.Header>
+                      <Calendar.Grid>
+                        <Calendar.GridHeader>
+                          {(day) => (
+                            <Calendar.HeaderCell>{day}</Calendar.HeaderCell>
+                          )}
+                        </Calendar.GridHeader>
+                        <Calendar.GridBody>
+                          {(d) => <Calendar.Cell date={d} />}
+                        </Calendar.GridBody>
+                      </Calendar.Grid>
+                    </Calendar>
+                  </DatePicker.Popover>
+                </DatePicker>
               )
             }}
           />
@@ -162,20 +231,26 @@ export function TransactionForm() {
           control={form.control}
           name="amount"
           render={({ field, fieldState }) => (
-            <NumberInput
-              value={field.value}
-              onValueChange={field.onChange}
-              label="Amount"
-              labelPlacement="outside"
-              placeholder="0.00"
-              step={0.01}
-              minValue={0}
+            <NumberField
+              fullWidth
               isInvalid={fieldState.invalid}
               isDisabled={isPending}
-              errorMessage={fieldState.error?.message}
-              classNames={{ inputWrapper: "shadow-none" }}
+              minValue={0}
+              step={0.01}
               formatOptions={FORMAT_CURRENCY_OPTS}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              value={field.value}
+              onChange={(v) => field.onChange(v)}
+              aria-label="Amount"
+            >
+              <NumberField.Group>
+                <NumberField.DecrementButton />
+                <NumberField.Input placeholder="0.00" />
+                <NumberField.IncrementButton />
+              </NumberField.Group>
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </NumberField>
           )}
         />
 
@@ -183,31 +258,46 @@ export function TransactionForm() {
           control={form.control}
           name="description"
           render={({ field, fieldState }) => (
-            <Input
-              type="text"
-              label="Description"
-              labelPlacement="outside"
-              placeholder="Enter transaction description (optional)"
-              value={field.value || ""}
-              onValueChange={(value) => field.onChange(value || "")}
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isPending}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value ?? ""}
+              ref={field.ref}
+            >
+              <Input
+                placeholder="Enter transaction description (optional)"
+                aria-label="Description"
+              />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
-        <div className="flex justify-end gap-3">
+        <div
+          className={cn(
+            "mt-6 flex min-w-0 flex-wrap justify-end gap-3 border-t border-divider",
+            "bg-overlay px-4 py-4 sm:px-5"
+          )}
+        >
           <Button
             type="button"
-            variant="flat"
+            variant="secondary"
             onPress={onClose}
             isDisabled={isPending}
           >
             Cancel
           </Button>
-          <Button type="submit" color="primary" isLoading={isPending}>
-            {isEditing ? "Update Transaction" : "Create Transaction"}
+          <Button type="submit" variant="primary" isDisabled={isPending}>
+            {isPending ? (
+              <Spinner size="sm" color="current" />
+            ) : isEditing ? (
+              "Update Transaction"
+            ) : (
+              "Create Transaction"
+            )}
           </Button>
         </div>
       </form>

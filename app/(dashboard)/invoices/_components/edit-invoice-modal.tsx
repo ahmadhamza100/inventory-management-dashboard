@@ -1,28 +1,42 @@
 "use client"
 
-import { InvoiceForm } from "./invoice-form"
+import { Modal, useOverlayState } from "@heroui/react"
 import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store"
-import { Modal, ModalContent, ModalHeader, ModalBody } from "@heroui/react"
+import { InvoiceForm } from "./invoice-form"
 
 export function EditInvoiceModal() {
   const onClose = useInvoiceModalStore((state) => state.onClose)
-  const isOpen = useInvoiceModalStore(
+  const storeOpen = useInvoiceModalStore(
     (state) => state.isOpen && state.type === "update"
   )
 
+  const overlay = useOverlayState({
+    isOpen: storeOpen,
+    onOpenChange: (open) => {
+      if (!open) onClose()
+    }
+  })
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">Edit Invoice</h2>
-          <p className="text-sm font-normal text-default-500">
-            Update invoice details
-          </p>
-        </ModalHeader>
-        <ModalBody className="pb-6">
-          <InvoiceForm />
-        </ModalBody>
-      </ModalContent>
+    <Modal state={overlay}>
+      <Modal.Backdrop>
+        <Modal.Container size="lg" scroll="outside">
+          <Modal.Dialog>
+            <Modal.Header className="relative flex flex-col gap-1 pr-12">
+              <Modal.CloseTrigger className="absolute end-3 top-3" />
+              <Modal.Heading className="text-xl font-semibold">
+                Edit Invoice
+              </Modal.Heading>
+              <p className="text-sm font-normal text-default-500">
+                Update invoice details
+              </p>
+            </Modal.Header>
+            <Modal.Body className="p-1">
+              <InvoiceForm />
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   )
 }

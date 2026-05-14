@@ -1,10 +1,19 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useCallback } from "react"
 import { api } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query"
-import { Button, Input, NumberInput, addToast } from "@heroui/react"
+import {
+  Button,
+  TextField,
+  Input,
+  NumberField,
+  FieldError,
+  Spinner,
+  toast,
+  cn
+} from "@heroui/react"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
 import { useIsUploadingImage } from "@/mutations/use-upload-image"
 import { gerErrorMessage } from "@/utils/error-handler"
@@ -30,7 +39,10 @@ export function ProductsForm() {
   const defaultValues: DefaultValues<ProductSchema> = useMemo(() => {
     return {
       name: product?.name ?? "",
-      price: Number(product?.price) ?? undefined,
+      price:
+        product?.price != null && !Number.isNaN(Number(product.price))
+          ? Number(product.price)
+          : undefined,
       stock: product?.stock ?? undefined,
       images: product?.images ?? undefined
     }
@@ -41,88 +53,109 @@ export function ProductsForm() {
     defaultValues
   })
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      if (isEditing) {
-        await api.products[":id"].$patch({
-          json: values,
-          param: { id: product?.id }
-        })
-        addToast({
-          title: "Product updated successfully",
-          color: "success"
-        })
-      } else {
-        await api.products.$post({ json: values })
-        addToast({
-          title: "Product created successfully",
-          color: "success"
+  const onSubmit = useCallback(
+    async (values: ProductSchema) => {
+      try {
+        if (isEditing) {
+          await api.products[":id"].$patch({
+            json: values,
+            param: { id: product?.id }
+          })
+          toast.success("Product updated successfully")
+        } else {
+          await api.products.$post({ json: values })
+          toast.success("Product created successfully")
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["products"] })
+        onClose()
+      } catch (error) {
+        form.setError("root", {
+          message: gerErrorMessage(
+            error,
+            isEditing ? "Failed to update product" : "Failed to create product"
+          )
         })
       }
-
-      queryClient.invalidateQueries({ queryKey: ["products"] })
-      onClose()
-    } catch (error) {
-      form.setError("root", {
-        message: gerErrorMessage(
-          error,
-          isEditing ? "Failed to update product" : "Failed to create product"
-        )
-      })
-    }
-  })
+    },
+    [form, isEditing, onClose, product, queryClient]
+  )
 
   const isPending = form.formState.isSubmitting
 
-  useEffect(() => {
-    return () => {
-      form.reset(defaultValues)
+  /** Mobile Safari often skips committing the focused field before synthetic press paths; blur first. */
+  const requestSubmitWithBlur = useCallback(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) {
+      active.blur()
     }
-  }, [form, defaultValues])
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void form.handleSubmit(onSubmit)()
+      })
+    })
+  }, [form, onSubmit])
+
+  useEffect(() => {
+    form.reset(defaultValues)
+  }, [defaultValues, form])
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
+      <form
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        onSubmit={(e) => {
+          e.preventDefault()
+          requestSubmitWithBlur()
+        }}
+        noValidate
+      >
         <FormError form={form} />
 
         <Controller
           control={form.control}
           name="name"
           render={({ field, fieldState }) => (
-            <Input
-              {...field}
-              type="text"
-              value={field.value}
-              onValueChange={field.onChange}
-              label="Product Name"
-              labelPlacement="outside"
-              placeholder="Enter product name"
+            <TextField
               isInvalid={fieldState.invalid}
-              errorMessage={fieldState.error?.message}
               isDisabled={isPending}
-            />
+              name={field.name}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+              value={field.value}
+              ref={field.ref}
+            >
+              <Input placeholder="Enter product name" aria-label="Product name" />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </TextField>
           )}
         />
 
-        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
           <Controller
             control={form.control}
             name="price"
             render={({ field, fieldState }) => (
-              <NumberInput
-                value={field.value}
-                onValueChange={field.onChange}
-                label="Price"
-                labelPlacement="outside"
-                placeholder="3,000"
-                step={0.01}
-                minValue={0}
+              <NumberField
+                fullWidth
                 isInvalid={fieldState.invalid}
                 isDisabled={isPending}
-                errorMessage={fieldState.error?.message}
-                classNames={{ inputWrapper: "shadow-none" }}
+                minValue={0}
+                step={0.01}
                 formatOptions={FORMAT_CURRENCY_OPTS}
-              />
+                name={field.name}
+                onBlur={field.onBlur}
+                value={field.value}
+                onChange={(v) => field.onChange(v)}
+                aria-label="Price"
+              >
+                <NumberField.Group>
+                  <NumberField.DecrementButton />
+                  <NumberField.Input placeholder="0.00" />
+                  <NumberField.IncrementButton />
+                </NumberField.Group>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </NumberField>
             )}
           />
 
@@ -130,29 +163,40 @@ export function ProductsForm() {
             control={form.control}
             name="stock"
             render={({ field, fieldState }) => (
-              <NumberInput
-                value={field.value}
-                onValueChange={field.onChange}
-                label="Stock"
-                labelPlacement="outside"
-                placeholder="100"
-                step={1}
-                minValue={0}
+              <NumberField
+                fullWidth
                 isInvalid={fieldState.invalid}
                 isDisabled={isPending}
-                errorMessage={fieldState.error?.message}
-                classNames={{ inputWrapper: "shadow-none" }}
-              />
+                minValue={0}
+                step={1}
+                name={field.name}
+                onBlur={field.onBlur}
+                value={field.value}
+                onChange={(v) => field.onChange(v)}
+                aria-label="Stock"
+              >
+                <NumberField.Group>
+                  <NumberField.DecrementButton />
+                  <NumberField.Input placeholder="100" />
+                  <NumberField.IncrementButton />
+                </NumberField.Group>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </NumberField>
             )}
           />
         </div>
 
         <ProductImageInput />
 
-        <div className="flex justify-end gap-3">
+        <div
+          className={cn(
+            "mt-6 flex min-w-0 flex-wrap justify-end gap-3 border-t border-divider",
+            "bg-overlay px-4 py-4 sm:px-5"
+          )}
+        >
           <Button
             type="button"
-            variant="flat"
+            variant="secondary"
             onPress={onClose}
             isDisabled={isUploading || isPending}
           >
@@ -160,11 +204,16 @@ export function ProductsForm() {
           </Button>
           <Button
             type="submit"
-            color="primary"
-            isLoading={isPending}
-            isDisabled={isUploading}
+            variant="primary"
+            isDisabled={isUploading || isPending}
           >
-            {isEditing ? "Update Product" : "Create Product"}
+            {isPending ? (
+              <Spinner size="sm" color="current" />
+            ) : isEditing ? (
+              "Update Product"
+            ) : (
+              "Create Product"
+            )}
           </Button>
         </div>
       </form>

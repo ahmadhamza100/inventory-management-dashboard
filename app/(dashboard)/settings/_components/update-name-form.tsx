@@ -3,8 +3,16 @@
 import { useEffect } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Input, Button, Card, CardHeader, CardBody } from "@heroui/react"
-import { addToast } from "@heroui/react"
+import {
+  Button,
+  Card,
+  CardHeader,
+  TextField,
+  Input,
+  FieldError,
+  Spinner,
+  toast
+} from "@heroui/react"
 import { FormError } from "@/components/form-error"
 import { updateNameSchema, type UpdateNameSchema } from "@/validations/auth"
 import { createClient } from "@/utils/supabase/client"
@@ -40,10 +48,7 @@ export function UpdateNameForm({ initialName }: UpdateNameFormProps) {
       form.setError("root", { message: error.message })
     } else {
       queryClient.invalidateQueries({ queryKey: ["current-user"] })
-      addToast({
-        title: "Name updated successfully",
-        color: "success"
-      })
+      toast.success("Name updated successfully")
       form.reset({ name: data.name }, { keepDirty: false })
     }
   })
@@ -59,7 +64,7 @@ export function UpdateNameForm({ initialName }: UpdateNameFormProps) {
           Change your display name shown across the application
         </p>
       </CardHeader>
-      <CardBody>
+      <Card.Content>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <FormError form={form} />
 
@@ -67,30 +72,36 @@ export function UpdateNameForm({ initialName }: UpdateNameFormProps) {
             control={form.control}
             name="name"
             render={({ field, fieldState }) => (
-              <Input
-                {...field}
-                label="Name"
-                placeholder="Enter your name"
-                labelPlacement="outside"
-                isDisabled={isSubmitting}
+              <TextField
                 isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-              />
+                isDisabled={isSubmitting}
+                name={field.name}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value}
+                ref={field.ref}
+              >
+                <Input placeholder="Enter your name" aria-label="Name" />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </TextField>
             )}
           />
 
           <div className="flex justify-end">
             <Button
               type="submit"
-              color="primary"
-              isLoading={isSubmitting}
+              variant="primary"
               isDisabled={!isDirty || isSubmitting}
             >
-              Update Name
+              {isSubmitting ? (
+                <Spinner size="sm" color="current" />
+              ) : (
+                "Update Name"
+              )}
             </Button>
           </div>
         </form>
-      </CardBody>
+      </Card.Content>
     </Card>
   )
 }

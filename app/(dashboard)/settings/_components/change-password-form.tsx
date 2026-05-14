@@ -2,10 +2,17 @@
 
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Button, Card, CardHeader, CardBody } from "@heroui/react"
-import { addToast } from "@heroui/react"
+import {
+  Button,
+  Card,
+  CardHeader,
+  Spinner,
+  toast,
+  TextField,
+  Input,
+  FieldError
+} from "@heroui/react"
 import { FormError } from "@/components/form-error"
-import { PasswordInput } from "@/components/password-input"
 import {
   changePasswordSchema,
   type ChangePasswordSchema
@@ -46,7 +53,6 @@ export function ChangePasswordForm() {
       return
     }
 
-    // If old password is correct, update to new password
     const { error: updateError } = await supabase.auth.updateUser({
       password: data.newPassword
     })
@@ -54,10 +60,7 @@ export function ChangePasswordForm() {
     if (updateError) {
       form.setError("root", { message: updateError.message })
     } else {
-      addToast({
-        title: "Password updated successfully",
-        color: "success"
-      })
+      toast.success("Password updated successfully")
       form.reset()
     }
   })
@@ -72,7 +75,7 @@ export function ChangePasswordForm() {
           Update your password to keep your account secure
         </p>
       </CardHeader>
-      <CardBody>
+      <Card.Content>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <FormError form={form} />
 
@@ -80,15 +83,22 @@ export function ChangePasswordForm() {
             control={form.control}
             name="oldPassword"
             render={({ field, fieldState }) => (
-              <PasswordInput
-                {...field}
-                label="Current Password"
-                placeholder="Enter current password"
-                labelPlacement="outside"
-                isDisabled={isSubmitting}
+              <TextField
                 isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-              />
+                isDisabled={isSubmitting}
+                name={field.name}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value}
+                ref={field.ref}
+              >
+                <Input
+                  type="password"
+                  placeholder="Enter current password"
+                  aria-label="Current password"
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </TextField>
             )}
           />
 
@@ -96,15 +106,22 @@ export function ChangePasswordForm() {
             control={form.control}
             name="newPassword"
             render={({ field, fieldState }) => (
-              <PasswordInput
-                {...field}
-                label="New Password"
-                placeholder="Enter new password"
-                labelPlacement="outside"
-                isDisabled={isSubmitting}
+              <TextField
                 isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-              />
+                isDisabled={isSubmitting}
+                name={field.name}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value}
+                ref={field.ref}
+              >
+                <Input
+                  type="password"
+                  placeholder="Enter new password"
+                  aria-label="New password"
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </TextField>
             )}
           />
 
@@ -112,30 +129,36 @@ export function ChangePasswordForm() {
             control={form.control}
             name="confirmPassword"
             render={({ field, fieldState }) => (
-              <PasswordInput
-                {...field}
-                label="Confirm New Password"
-                placeholder="Confirm new password"
-                labelPlacement="outside"
-                isDisabled={isSubmitting}
+              <TextField
                 isInvalid={fieldState.invalid}
-                errorMessage={fieldState.error?.message}
-              />
+                isDisabled={isSubmitting}
+                name={field.name}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={field.value}
+                ref={field.ref}
+              >
+                <Input
+                  type="password"
+                  placeholder="Confirm new password"
+                  aria-label="Confirm new password"
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </TextField>
             )}
           />
 
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              color="primary"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              Change Password
+            <Button type="submit" variant="primary" isDisabled={isSubmitting}>
+              {isSubmitting ? (
+                <Spinner size="sm" color="current" />
+              ) : (
+                "Change Password"
+              )}
             </Button>
           </div>
         </form>
-      </CardBody>
+      </Card.Content>
     </Card>
   )
 }
