@@ -79,7 +79,7 @@ export function TableFilterDrawer<T extends object>({
   const toolbarInner = (
     <>
       <Button
-        variant="ghost"
+        variant="secondary"
         size="md"
         onPress={openDrawer}
         aria-label={
@@ -88,19 +88,20 @@ export function TableFilterDrawer<T extends object>({
             : triggerAriaLabel
         }
         className={cn(
-          "h-10 min-h-10 shrink-0 gap-2 rounded-xl border-0 px-3 text-sm font-medium",
-          "bg-[var(--field-background,var(--surface-secondary))] text-foreground shadow-field",
+          "h-10 min-h-10 shrink-0 gap-2 rounded-xl border px-3 text-sm font-medium",
+          "border-[var(--field-border,var(--color-divider))] bg-[var(--field-background,var(--surface-secondary))] text-foreground shadow-field",
           "outline-none hover:bg-[var(--field-background,var(--surface-secondary))]/90",
           "focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "dark:bg-default-100/20 dark:hover:bg-default-100/30",
+          "max-md:aspect-square max-md:w-10 max-md:justify-center max-md:px-0",
+          "dark:hover:bg-default-100/30",
           "data-[pressed]:opacity-90",
           triggerClassName
         )}
       >
         <IconAdjustmentsHorizontal size={20} className="text-default-500" aria-hidden />
-        <span>Filters</span>
+        <span className="max-md:hidden">Filters</span>
         {activeCount > 0 ? (
-          <span className="bg-primary/15 text-primary min-w-6 rounded-full px-2 py-0.5 text-center text-xs font-semibold tabular-nums">
+          <span className="bg-primary/15 text-primary min-w-6 rounded-full px-2 py-0.5 text-center text-xs font-semibold tabular-nums max-md:absolute max-md:right-0 max-md:top-0 max-md:min-w-5 max-md:-translate-y-1/3 max-md:translate-x-1/3 max-md:px-1.5">
             {activeCount}
           </span>
         ) : null}
@@ -110,12 +111,12 @@ export function TableFilterDrawer<T extends object>({
         <Button
           variant="danger-soft"
           size="md"
-          className="h-10 min-h-10 shrink-0 gap-2 rounded-xl px-3 text-sm font-medium"
+          className="h-10 min-h-10 shrink-0 gap-2 rounded-xl border px-3 text-sm font-medium max-md:aspect-square max-md:w-10 max-md:justify-center max-md:px-0"
           onPress={() => void clearCommitted()}
           aria-label="Clear all filters"
         >
           <IconFilterX size={18} aria-hidden />
-          <span>Clear filters</span>
+          <span className="max-md:hidden">Clear filters</span>
         </Button>
       ) : null}
     </>

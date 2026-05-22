@@ -68,7 +68,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
             ) : null}
           </div>
 
-          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-3">
             <Controller
               control={form.control}
               name={`items.${index}.quantity`}

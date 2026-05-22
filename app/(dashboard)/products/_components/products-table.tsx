@@ -2,6 +2,7 @@
 
 import orderBy from "lodash.orderby"
 import filter from "lodash.filter"
+import { useRouter } from "next/navigation"
 import { useMemo, useCallback } from "react"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
 import { useProductsQuery } from "@/queries/use-products-query"
@@ -16,6 +17,7 @@ import {
   type ProductFilterDraft
 } from "@/app/(dashboard)/_components/product-filters-form"
 import type { Product } from "@/db/schema"
+import { ROUTES } from "@/utils/routes"
 import {
   IconAlertTriangle,
   IconRefresh,
@@ -45,6 +47,7 @@ const columns = [
 ] as const
 
 export function ProductsTable() {
+  const router = useRouter()
   const {
     data: products,
     isLoading,
@@ -182,7 +185,11 @@ export function ProductsTable() {
                 <Dropdown.Menu
                   aria-label="Product actions"
                   onAction={(key) => {
-                    if (key === "edit") {
+                    if (key === "invoices") {
+                      router.push(
+                        `${ROUTES.invoices}?product=${encodeURIComponent(product.id)}`
+                      )
+                    } else if (key === "edit") {
                       openProductModal("update", product)
                     } else if (key === "delete") {
                       openProductModal("delete", product)
@@ -219,7 +226,7 @@ export function ProductsTable() {
           return null
       }
     },
-    [openProductModal]
+    [openProductModal, router]
   )
 
   const totalCount = products?.length ?? 0

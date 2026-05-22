@@ -4,6 +4,7 @@ import { useTransition } from "react"
 import { api } from "@/utils/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { useProductModalStore } from "@/stores/use-product-modal-store"
+import { productsQueryKey, type ProductListItem } from "@/queries/use-products-query"
 import {
   Modal,
   useOverlayState,
@@ -13,6 +14,7 @@ import {
 } from "@heroui/react"
 import { IconAlertTriangle } from "@tabler/icons-react"
 import { gerErrorMessage } from "@/utils/error-handler"
+import { removeProductFromList } from "@/utils/query-updaters"
 
 export function DeleteProductModal() {
   const onClose = useProductModalStore((state) => state.onClose)
@@ -39,7 +41,9 @@ export function DeleteProductModal() {
           param: { id: product.id }
         })
 
-        queryClient.invalidateQueries({ queryKey: ["products"] })
+        queryClient.setQueryData(productsQueryKey, (current?: ProductListItem[]) =>
+          removeProductFromList(current, product.id)
+        )
         toast.success("Product deleted")
         onClose()
       } catch (error) {

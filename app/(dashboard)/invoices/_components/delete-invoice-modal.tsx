@@ -4,6 +4,7 @@ import { useTransition } from "react"
 import { api } from "@/utils/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store"
+import { invoicesQueryKey, type InvoiceListItem } from "@/queries/use-invoices-query"
 import {
   Modal,
   useOverlayState,
@@ -13,6 +14,7 @@ import {
 } from "@heroui/react"
 import { IconAlertTriangle } from "@tabler/icons-react"
 import { gerErrorMessage } from "@/utils/error-handler"
+import { removeInvoiceFromList } from "@/utils/query-updaters"
 
 export function DeleteInvoiceModal() {
   const onClose = useInvoiceModalStore((state) => state.onClose)
@@ -39,7 +41,9 @@ export function DeleteInvoiceModal() {
           param: { id: invoice.id }
         })
 
-        queryClient.invalidateQueries({ queryKey: ["invoices"] })
+        queryClient.setQueryData(invoicesQueryKey, (current?: InvoiceListItem[]) =>
+          removeInvoiceFromList(current, invoice.id)
+        )
         toast.success("Invoice deleted")
         onClose()
       } catch (error) {

@@ -5,7 +5,15 @@ import { api } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQueryClient } from "@tanstack/react-query"
 import { useInvoiceModalStore } from "@/stores/use-invoice-modal-store"
-import { useProductsQuery } from "@/queries/use-products-query"
+import {
+  invoicesQueryKey,
+  type InvoiceListItem
+} from "@/queries/use-invoices-query"
+import {
+  productsQueryKey,
+  useProductsQuery,
+  type ProductListItem
+} from "@/queries/use-products-query"
 import { gerErrorMessage } from "@/utils/error-handler"
 import { FormError } from "@/components/form-error"
 import { Button, Separator, Spinner, toast, cn } from "@heroui/react"
@@ -13,7 +21,13 @@ import { UserSelect } from "./user-select"
 import { ProductsList } from "./products-list"
 import { InvoiceSummary } from "./invoice-summary"
 import { type InvoiceSchema, invoiceSchema } from "@/validations/invoice"
+import { mergeProductsInList, upsertInvoiceInList } from "@/utils/query-updaters"
 import { useForm, FormProvider, type DefaultValues } from "react-hook-form"
+
+type InvoiceMutationResponse = {
+  invoice: InvoiceListItem
+  products: ProductListItem[]
+}
 
 export function InvoiceForm() {
   const onClose = useInvoiceModalStore((state) => state.onClose)
@@ -64,18 +78,30 @@ export function InvoiceForm() {
     async (values: InvoiceSchema) => {
       try {
         if (isEditing && invoice) {
-          await api.invoices[":id"].$patch({
+          const response = await api.invoices[":id"].$patch({
             json: values,
             param: { id: invoice.id }
           })
+          const result = (await response.json()) as unknown as InvoiceMutationResponse
+          queryClient.setQueryData(invoicesQueryKey, (current?: InvoiceListItem[]) =>
+            upsertInvoiceInList(current, result.invoice)
+          )
+          queryClient.setQueryData(productsQueryKey, (current?: ProductListItem[]) =>
+            mergeProductsInList(current, result.products)
+          )
           toast.success("Invoice updated successfully")
         } else {
-          await api.invoices.$post({ json: values })
+          const response = await api.invoices.$post({ json: values })
+          const result = (await response.json()) as unknown as InvoiceMutationResponse
+          queryClient.setQueryData(invoicesQueryKey, (current?: InvoiceListItem[]) =>
+            upsertInvoiceInList(current, result.invoice)
+          )
+          queryClient.setQueryData(productsQueryKey, (current?: ProductListItem[]) =>
+            mergeProductsInList(current, result.products)
+          )
           toast.success("Invoice created successfully")
         }
 
-        queryClient.invalidateQueries({ queryKey: ["invoices"] })
-        queryClient.invalidateQueries({ queryKey: ["products"] })
         onClose()
       } catch (error) {
         toast.danger(

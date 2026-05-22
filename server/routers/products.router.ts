@@ -27,18 +27,23 @@ export const productsRouter = new Hono()
     const { price, images, ...data } = c.req.valid("json")
     const normalizedImages = normalizeImages(images)
 
-    await db.transaction(async (tx) => {
+    const createdProduct = await db.transaction(async (tx) => {
       const sku = await allocateNextProductSku(tx, adminId)
-      await tx.insert(products).values({
+      const [product] = await tx
+        .insert(products)
+        .values({
         ...data,
         adminId,
         images: normalizedImages,
         sku,
         price: price.toString()
-      })
+        })
+        .returning()
+
+      return product
     })
 
-    return c.json(null, 201)
+    return c.json(createdProduct, 201)
   })
 
   .patch("/:id", zValidator("json", productSchema), async (c) => {
@@ -71,7 +76,7 @@ export const productsRouter = new Hono()
       }
     }
 
-    await db
+    const [updatedProduct] = await db
       .update(products)
       .set({ ...data, images: normalizedImages, price: price.toString() })
       .where(
@@ -81,8 +86,9 @@ export const productsRouter = new Hono()
           isNull(products.deletedAt)
         )
       )
+      .returning()
 
-    return c.json(null, 200)
+    return c.json(updatedProduct, 200)
   })
 
   .delete("/:id", async (c) => {
@@ -119,5 +125,5 @@ export const productsRouter = new Hono()
         )
       )
 
-    return c.json(null, 200)
+    return c.json({ id }, 200)
   })

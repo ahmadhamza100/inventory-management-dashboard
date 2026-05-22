@@ -347,11 +347,11 @@ export function InvoicesTable() {
   const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Invoices</h1>
           <Button
             variant="primary"
-            className="h-10 min-h-10 w-full shrink-0 px-4 sm:ml-auto sm:w-auto"
+            className="h-10 min-h-10 shrink-0 px-4"
             onPress={() => openInvoiceModal("create")}
           >
             <span className="flex items-center justify-center gap-2">

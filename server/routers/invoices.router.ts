@@ -1,17 +1,92 @@
 import { Hono } from "hono"
 import { db } from "@/db"
-import { and, eq, inArray, isNull, desc, sql, type SQL } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
 import { invoiceSchema } from "@/validations/invoice"
 import {
-  invoices,
-  invoiceItems,
   customers,
-  products,
-  invoiceCounters
+  invoiceCounters,
+  invoiceItems,
+  invoices,
+  products
 } from "@/db/schema"
 import { generateInvoiceId } from "@/utils/helpers"
 import { HTTPException } from "hono/http-exception"
+
+async function getInvoiceDetails(adminId: string, invoiceId: string) {
+  const [invoice] = await db
+    .select({
+      id: invoices.id,
+      customerId: invoices.customerId,
+      total: invoices.total,
+      amountPaid: invoices.amountPaid,
+      deletedAt: invoices.deletedAt,
+      createdAt: invoices.createdAt,
+      updatedAt: invoices.updatedAt,
+      customer: {
+        name: customers.name,
+        email: customers.email,
+        phone: customers.phone,
+        address: customers.address
+      }
+    })
+    .from(invoices)
+    .innerJoin(
+      customers,
+      and(
+        eq(customers.id, invoices.customerId),
+        eq(customers.adminId, adminId)
+      )
+    )
+    .where(
+      and(
+        eq(invoices.id, invoiceId),
+        eq(invoices.adminId, adminId),
+        isNull(invoices.deletedAt)
+      )
+    )
+
+  if (!invoice) {
+    throw new HTTPException(404, { message: "Invoice not found" })
+  }
+
+  const items = await db
+    .select({
+      quantity: invoiceItems.quantity,
+      price: invoiceItems.price,
+      product: {
+        name: products.name,
+        stock: products.stock,
+        images: products.images
+      }
+    })
+    .from(invoiceItems)
+    .leftJoin(
+      products,
+      and(
+        eq(products.id, invoiceItems.productId),
+        eq(products.adminId, adminId)
+      )
+    )
+    .where(
+      and(
+        eq(invoiceItems.invoiceId, invoiceId),
+        eq(invoiceItems.adminId, adminId),
+        isNull(invoiceItems.deletedAt)
+      )
+    )
+
+  return {
+    ...invoice,
+    products: items.map((item) => ({
+      name: item.product?.name ?? null,
+      price: item.price,
+      stock: item.product?.stock ?? null,
+      quantity: item.quantity,
+      images: item.product?.images ?? []
+    }))
+  }
+}
 
 export const invoicesRouter = new Hono()
   .get("/", async (c) => {
@@ -41,9 +116,7 @@ export const invoicesRouter = new Hono()
           eq(customers.adminId, adminId)
         )
       )
-      .where(
-        and(eq(invoices.adminId, adminId), isNull(invoices.deletedAt))
-      )
+      .where(and(eq(invoices.adminId, adminId), isNull(invoices.deletedAt)))
       .orderBy(desc(invoices.createdAt))
 
     if (invoicesData.length === 0) {
@@ -106,17 +179,18 @@ export const invoicesRouter = new Hono()
       >
     )
 
-    const data = invoicesData.map((invoice) => ({
-      ...invoice,
-      products: itemsByInvoiceId[invoice.id] ?? []
-    }))
-
-    return c.$json(data)
+    return c.$json(
+      invoicesData.map((invoice) => ({
+        ...invoice,
+        products: itemsByInvoiceId[invoice.id] ?? []
+      }))
+    )
   })
 
   .post("/", zValidator("json", invoiceSchema), async (c) => {
     const adminId = c.get("adminId")
     const { items, amountPaid, customerId } = c.req.valid("json")
+    const affectedProductIds = [...new Set(items.map((item) => item.productId))]
 
     const total = items.reduce(
       (sum, item) => sum + Number(item.price) * item.quantity,
@@ -124,7 +198,7 @@ export const invoicesRouter = new Hono()
     )
 
     try {
-      await db.transaction(async (tx) => {
+      const createdInvoiceId = await db.transaction(async (tx) => {
         const [counter] = await tx
           .insert(invoiceCounters)
           .values({
@@ -165,15 +239,13 @@ export const invoicesRouter = new Hono()
           }))
         )
 
-        if (items.length > 0) {
+        if (affectedProductIds.length > 0) {
           const sqlChunks: SQL[] = [sql`(case`]
-          const productIds: string[] = []
 
           for (const item of items) {
             sqlChunks.push(
               sql`when ${products.id} = ${item.productId} then ${products.stock} - ${item.quantity}`
             )
-            productIds.push(item.productId)
           }
 
           sqlChunks.push(sql`end)`)
@@ -185,11 +257,29 @@ export const invoicesRouter = new Hono()
             .where(
               and(
                 eq(products.adminId, adminId),
-                inArray(products.id, productIds)
+                inArray(products.id, affectedProductIds)
               )
             )
         }
+
+        return invoice.id
       })
+
+      const invoice = await getInvoiceDetails(adminId, createdInvoiceId)
+      const updatedProducts =
+        affectedProductIds.length > 0
+          ? await db
+              .select()
+              .from(products)
+              .where(
+                and(
+                  eq(products.adminId, adminId),
+                  inArray(products.id, affectedProductIds)
+                )
+              )
+          : []
+
+      return c.json({ invoice, products: updatedProducts }, 201)
     } catch (error) {
       const databaseError = error as { code?: string; constraint_name?: string }
 
@@ -205,8 +295,6 @@ export const invoicesRouter = new Hono()
 
       throw error
     }
-
-    return c.json(null, 201)
   })
 
   .patch("/:id", zValidator("json", invoiceSchema), async (c) => {
@@ -253,9 +341,7 @@ export const invoicesRouter = new Hono()
 
       await db
         .update(products)
-        .set({
-          stock: finalSql
-        })
+        .set({ stock: finalSql })
         .where(
           and(
             eq(products.adminId, adminId),
@@ -315,9 +401,7 @@ export const invoicesRouter = new Hono()
 
       await db
         .update(products)
-        .set({
-          stock: finalSql
-        })
+        .set({ stock: finalSql })
         .where(
           and(
             eq(products.adminId, adminId),
@@ -326,12 +410,34 @@ export const invoicesRouter = new Hono()
         )
     }
 
-    return c.json(null, 200)
+    const invoice = await getInvoiceDetails(adminId, id)
+    const affectedProductIds = [
+      ...new Set([
+        ...validOldItems.map((item) => item.productId).filter(Boolean),
+        ...items.map((item) => item.productId)
+      ])
+    ] as string[]
+
+    const updatedProducts =
+      affectedProductIds.length > 0
+        ? await db
+            .select()
+            .from(products)
+            .where(
+              and(
+                eq(products.adminId, adminId),
+                inArray(products.id, affectedProductIds)
+              )
+            )
+        : []
+
+    return c.json({ invoice, products: updatedProducts }, 200)
   })
 
   .delete("/:id", async (c) => {
     const adminId = c.get("adminId")
     const { id } = c.req.param()
+
     await db
       .update(invoices)
       .set({ deletedAt: new Date() })
@@ -343,5 +449,5 @@ export const invoicesRouter = new Hono()
         )
       )
 
-    return c.json(null, 200)
+    return c.json({ id }, 200)
   })

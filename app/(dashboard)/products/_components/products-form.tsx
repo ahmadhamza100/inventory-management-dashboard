@@ -21,7 +21,9 @@ import { gerErrorMessage } from "@/utils/error-handler"
 import { FormError } from "@/components/form-error"
 import { ProductImageInput } from "./product-image-input"
 import { FORMAT_CURRENCY_OPTS } from "@/utils/helpers"
+import { productsQueryKey, type ProductListItem } from "@/queries/use-products-query"
 import { type ProductSchema, productSchema } from "@/validations/product"
+import { upsertProductInList } from "@/utils/query-updaters"
 import {
   useForm,
   Controller,
@@ -58,17 +60,24 @@ export function ProductsForm() {
     async (values: ProductSchema) => {
       try {
         if (isEditing) {
-          await api.products[":id"].$patch({
+          const response = await api.products[":id"].$patch({
             json: values,
             param: { id: product?.id }
           })
+          const updatedProduct = (await response.json()) as unknown as ProductListItem
+          queryClient.setQueryData(productsQueryKey, (current?: ProductListItem[]) =>
+            upsertProductInList(current, updatedProduct)
+          )
           toast.success("Product updated successfully")
         } else {
-          await api.products.$post({ json: values })
+          const response = await api.products.$post({ json: values })
+          const createdProduct = (await response.json()) as unknown as ProductListItem
+          queryClient.setQueryData(productsQueryKey, (current?: ProductListItem[]) =>
+            upsertProductInList(current, createdProduct)
+          )
           toast.success("Product created successfully")
         }
 
-        queryClient.invalidateQueries({ queryKey: ["products"] })
         onClose()
       } catch (error) {
         form.setError("root", {
