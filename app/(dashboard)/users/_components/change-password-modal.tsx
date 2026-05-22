@@ -13,6 +13,7 @@ import {
   Spinner,
   toast,
   TextField,
+  Label,
   Input,
   FieldError
 } from "@heroui/react"
@@ -83,8 +84,8 @@ export function ChangePasswordModal() {
                 </span>
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
-              <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <Modal.Body className="p-2">
+              <form onSubmit={onSubmit} className="flex flex-col gap-4 p-2">
                 <FormError form={form} />
 
                 <Controller
@@ -100,6 +101,7 @@ export function ChangePasswordModal() {
                       value={field.value}
                       ref={field.ref}
                     >
+                      <Label>New password</Label>
                       <Input
                         type="password"
                         placeholder="Enter new password"
@@ -123,6 +125,7 @@ export function ChangePasswordModal() {
                       value={field.value}
                       ref={field.ref}
                     >
+                      <Label>Confirm new password</Label>
                       <Input
                         type="password"
                         placeholder="Confirm new password"

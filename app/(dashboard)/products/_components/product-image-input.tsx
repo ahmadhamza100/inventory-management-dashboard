@@ -145,6 +145,12 @@ export function ProductImageInput() {
   const imagesValue = form.watch("images")
   const imagesError = form.formState.errors.images?.message
 
+  const getCompletedUrls = useCallback(
+    (sourceItems: ImageItem[]) =>
+      sourceItems.filter((item) => !item.isUploading).map((item) => item.url),
+    []
+  )
+
   // Sync form value → local state on mount / reset
   useEffect(() => {
     if (!imagesValue) return
@@ -181,15 +187,19 @@ export function ProductImageInput() {
     })
   }, [imagesValue])
 
-  const syncToForm = useCallback(
-    (newItems: ImageItem[]) => {
-      const urls = newItems
-        .filter((item) => !item.isUploading)
-        .map((item) => item.url)
-      form.setValue("images", urls, { shouldValidate: true })
-    },
-    [form]
-  )
+  useEffect(() => {
+    const completedUrls = getCompletedUrls(items)
+    const currentFormUrls = imagesValue ?? []
+
+    if (
+      completedUrls.length === currentFormUrls.length &&
+      completedUrls.every((url, index) => url === currentFormUrls[index])
+    ) {
+      return
+    }
+
+    form.setValue("images", completedUrls, { shouldValidate: true })
+  }, [form, getCompletedUrls, imagesValue, items])
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -213,7 +223,7 @@ export function ProductImageInput() {
 
         setItems((prev) => {
           // Replace all temp items with completed urls
-          const updatedItems = prev.map((item) => {
+          return prev.map((item) => {
             const index = newItems.findIndex((t) => t.id === item.id)
             if (index !== -1 && uploadedUrls[index]) {
               return {
@@ -225,18 +235,6 @@ export function ProductImageInput() {
             }
             return item
           })
-
-          // Sync completed URLs to form OUTSIDE the setState updater using the finalized array
-          const urls = updatedItems
-            .filter((item) => !item.isUploading)
-            .map((item) => item.url)
-
-          // setTimeout ensures react-hook-form receives the absolute latest set all at once
-          setTimeout(() => {
-            form.setValue("images", urls, { shouldValidate: true })
-          }, 0)
-
-          return updatedItems
         })
       } catch (error) {
         console.error("Upload failed in batch:", error)
@@ -255,7 +253,7 @@ export function ProductImageInput() {
         })
       }
     },
-    [uploadImage, form]
+    [uploadImage]
   )
 
   const isPending = form.formState.isSubmitting
@@ -285,12 +283,10 @@ export function ProductImageInput() {
         if (item?.localPreview) {
           URL.revokeObjectURL(item.localPreview)
         }
-        const updated = prev.filter((i) => i.id !== id)
-        syncToForm(updated)
-        return updated
+        return prev.filter((i) => i.id !== id)
       })
     },
-    [syncToForm]
+    []
   )
 
   const sensors = useSensors(
@@ -308,12 +304,10 @@ export function ProductImageInput() {
       setItems((prev) => {
         const oldIndex = prev.findIndex((item) => item.id === active.id)
         const newIndex = prev.findIndex((item) => item.id === over.id)
-        const reordered = arrayMove(prev, oldIndex, newIndex)
-        syncToForm(reordered)
-        return reordered
+        return arrayMove(prev, oldIndex, newIndex)
       })
     },
-    [syncToForm]
+    []
   )
 
   // Cleanup local previews on unmount
@@ -413,7 +407,7 @@ export function ProductImageInput() {
                 strategy={rectSortingStrategy}
               >
                 <div className="relative isolate min-w-0 overflow-hidden rounded-lg">
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                   {items.map((item, index) => (
                     <SortableImageCard
                       key={item.id}

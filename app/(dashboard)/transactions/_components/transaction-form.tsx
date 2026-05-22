@@ -25,6 +25,7 @@ import {
   Select,
   Spinner,
   TextField,
+  Label,
   Input,
   toast,
   cn
@@ -119,7 +120,7 @@ export function TransactionForm() {
   return (
     <FormProvider {...form}>
       <form
-        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden p-2"
         onSubmit={(e) => {
           e.preventDefault()
           requestSubmitWithBlur()
@@ -143,6 +144,7 @@ export function TransactionForm() {
                   if (key) field.onChange(String(key))
                 }}
               >
+                <Label>Transaction type</Label>
                 <FieldError>{fieldState.error?.message}</FieldError>
                 <Select.Trigger>
                   <Select.Value />
@@ -189,6 +191,7 @@ export function TransactionForm() {
                   granularity="day"
                   aria-label="Transaction date"
                 >
+                  <Label>Transaction date</Label>
                   <FieldError>{fieldState.error?.message}</FieldError>
                   <DateField.Group>
                     <DateField.Input>
@@ -244,6 +247,7 @@ export function TransactionForm() {
               onChange={(v) => field.onChange(v)}
               aria-label="Amount"
             >
+              <Label>Amount</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input placeholder="0.00" />
@@ -267,6 +271,7 @@ export function TransactionForm() {
               value={field.value ?? ""}
               ref={field.ref}
             >
+              <Label>Description</Label>
               <Input
                 placeholder="Enter transaction description (optional)"
                 aria-label="Description"

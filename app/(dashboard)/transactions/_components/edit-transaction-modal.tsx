@@ -31,7 +31,7 @@ export function EditTransactionModal() {
                 Update transaction details
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <TransactionForm />
             </Modal.Body>
           </Modal.Dialog>

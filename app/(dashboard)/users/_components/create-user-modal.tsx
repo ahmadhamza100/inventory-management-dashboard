@@ -31,7 +31,7 @@ export function CreateUserModal() {
                 Add a new user to the system
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <UsersForm />
             </Modal.Body>
           </Modal.Dialog>

@@ -10,6 +10,7 @@ import {
   TextField,
   Input,
   FieldError,
+  Label,
   Spinner,
   toast
 } from "@heroui/react"
@@ -81,6 +82,7 @@ export function UpdateNameForm({ initialName }: UpdateNameFormProps) {
                 value={field.value}
                 ref={field.ref}
               >
+                <Label>Name</Label>
                 <Input placeholder="Enter your name" aria-label="Name" />
                 <FieldError>{fieldState.error?.message}</FieldError>
               </TextField>

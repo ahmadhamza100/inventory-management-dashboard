@@ -119,7 +119,7 @@ export function InvoiceForm() {
   return (
     <FormProvider {...form}>
       <form
-        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden p-2"
         onSubmit={(e) => {
           e.preventDefault()
           requestSubmitWithBlur()

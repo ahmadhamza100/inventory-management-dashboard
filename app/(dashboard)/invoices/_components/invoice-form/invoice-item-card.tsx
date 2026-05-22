@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useFormContext, Controller, useWatch } from "react-hook-form"
-import { Button, NumberField, FieldError } from "@heroui/react"
+import { Button, NumberField, FieldError, Label } from "@heroui/react"
 import { IconTrash } from "@tabler/icons-react"
 import { ProductThumbnail } from "@/components/product-thumbnail"
 import { formatPrice, FORMAT_CURRENCY_OPTS } from "@/utils/helpers"
@@ -86,6 +86,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
                   onBlur={field.onBlur}
                   aria-label="Quantity"
                 >
+                  <Label>Quantity</Label>
                   <NumberField.Group>
                     <NumberField.DecrementButton />
                     <NumberField.Input placeholder="Qty" />
@@ -113,6 +114,7 @@ export function InvoiceItemCard({ index }: InvoiceItemCardProps) {
                   onBlur={field.onBlur}
                   aria-label="Unit price"
                 >
+                  <Label>Unit price</Label>
                   <NumberField.Group>
                     <NumberField.DecrementButton />
                     <NumberField.Input placeholder="0.00" />

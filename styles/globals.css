@@ -3,8 +3,8 @@
 @config "../tailwind.config.ts";
 
 /**
- * Light theme: soft gray canvas (`--background`), slightly lifted `--surface` cards.
- * Fields use `--field-background` with **no stroke** in light mode (ring on focus from HeroUI).
+ * Light theme: soft gray canvas (`--background`), white-ish raised surfaces for cards/modals,
+ * and slightly darker fields with a subtle stroke so controls stay readable.
  * @see https://www.heroui.com/docs/react/getting-started/colors
  */
 @layer base {
@@ -18,7 +18,7 @@
     /* Cards, table body cells, raised panels */
     --surface: oklch(0.985 0.0035 286);
     /* Modals / drawers */
-    --overlay: oklch(0.992 0.003 286);
+    --overlay: oklch(0.998 0.0015 286);
   }
 
   body {
@@ -32,8 +32,8 @@
 
 @layer components {
   /*
-   * Light theme fields: default HeroUI inputs read as white on a white page.
-   * Point field tokens at `surface-secondary` + border so controls stay visible.
+   * Light theme fields: make controls visibly distinct from cards/modals.
+   * Use a slightly darker fill plus a soft stroke so form surfaces don't disappear.
    * Dark theme keeps values from `@heroui/styles` / variables.
    */
   :root:not(.dark):not([data-theme="dark"]),
@@ -41,12 +41,21 @@
   .default,
   [data-theme="light"],
   [data-theme="default"] {
-    --field-background: var(--surface-secondary);
+    --field-background: oklch(0.965 0.0035 286);
     --field-foreground: var(--foreground);
     --field-placeholder: var(--muted);
-    /* No stroke on fields in light mode — surface + shadow + focus ring only */
-    --field-border: transparent;
-    --field-border-width: 0px;
+    --field-border: color-mix(in oklab, var(--foreground) 12%, white);
+    --field-border-width: 1px;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --field-background: color-mix(in oklab, var(--background) 78%, white 6%);
+    --field-foreground: var(--foreground);
+    --field-placeholder: color-mix(in oklab, var(--foreground) 45%, transparent);
+    --field-border: color-mix(in oklab, var(--foreground) 18%, transparent);
+    --field-border-width: 1px;
+    --overlay: color-mix(in oklab, var(--background) 90%, white 4%);
   }
 
   /*

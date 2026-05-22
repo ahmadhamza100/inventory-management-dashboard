@@ -7,8 +7,9 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   Button,
   TextField,
-  Input,
   NumberField,
+  Label,
+  Input,
   FieldError,
   Spinner,
   toast,
@@ -103,7 +104,7 @@ export function ProductsForm() {
   return (
     <FormProvider {...form}>
       <form
-        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden p-2"
         onSubmit={(e) => {
           e.preventDefault()
           requestSubmitWithBlur()
@@ -125,6 +126,7 @@ export function ProductsForm() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Product name</Label>
               <Input placeholder="Enter product name" aria-label="Product name" />
               <FieldError>{fieldState.error?.message}</FieldError>
             </TextField>
@@ -140,18 +142,26 @@ export function ProductsForm() {
                 fullWidth
                 isInvalid={fieldState.invalid}
                 isDisabled={isPending}
-                minValue={0}
+                minValue={0.01}
                 step={0.01}
                 formatOptions={FORMAT_CURRENCY_OPTS}
                 name={field.name}
                 onBlur={field.onBlur}
                 value={field.value}
-                onChange={(v) => field.onChange(v)}
+                onChange={(value) =>
+                  field.onChange(value != null ? Number(value) : undefined)
+                }
                 aria-label="Price"
               >
+                <Label>Price</Label>
                 <NumberField.Group>
                   <NumberField.DecrementButton />
-                  <NumberField.Input placeholder="0.00" />
+                  <NumberField.Input
+                    placeholder={new Intl.NumberFormat(
+                      "en-US",
+                      FORMAT_CURRENCY_OPTS
+                    ).format(0.01)}
+                  />
                   <NumberField.IncrementButton />
                 </NumberField.Group>
                 <FieldError>{fieldState.error?.message}</FieldError>
@@ -172,9 +182,12 @@ export function ProductsForm() {
                 name={field.name}
                 onBlur={field.onBlur}
                 value={field.value}
-                onChange={(v) => field.onChange(v)}
+                onChange={(value) =>
+                  field.onChange(value != null ? Number(value) : undefined)
+                }
                 aria-label="Stock"
               >
+                <Label>Stock</Label>
                 <NumberField.Group>
                   <NumberField.DecrementButton />
                   <NumberField.Input placeholder="100" />
@@ -190,7 +203,7 @@ export function ProductsForm() {
 
         <div
           className={cn(
-            "mt-6 flex min-w-0 flex-wrap justify-end gap-3 border-t border-divider",
+            "mt-6 flex min-w-0 flex-col-reverse gap-3 border-t border-divider sm:flex-row sm:flex-wrap sm:justify-end",
             "bg-overlay px-4 py-4 sm:px-5"
           )}
         >
@@ -199,6 +212,7 @@ export function ProductsForm() {
             variant="secondary"
             onPress={onClose}
             isDisabled={isUploading || isPending}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -206,6 +220,7 @@ export function ProductsForm() {
             type="submit"
             variant="primary"
             isDisabled={isUploading || isPending}
+            className="w-full sm:w-auto"
           >
             {isPending ? (
               <Spinner size="sm" color="current" />

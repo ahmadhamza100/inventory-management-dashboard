@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { cn } from "@heroui/react"
 import { Geist, Geist_Mono } from "next/font/google"
 import { NuqsAdapter } from "nuqs/adapters/next/app"
+import NextTopLoader from "nextjs-toploader"
 
 import { ToastProvider } from "@/providers/toast-provider"
 import { ThemeProvider } from "@/providers/theme-provider"
@@ -41,6 +42,12 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <>
+              <NextTopLoader
+                color="#2299DD"
+                showSpinner={false}
+                height={3}
+                crawlSpeed={200}
+              />
               <ToastProvider />
               <NuqsAdapter>{children}</NuqsAdapter>
             </>

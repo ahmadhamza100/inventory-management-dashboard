@@ -31,7 +31,7 @@ export function CreateProductModal() {
                 Add a new product to your inventory
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <ProductsForm key="create" />
             </Modal.Body>
           </Modal.Dialog>

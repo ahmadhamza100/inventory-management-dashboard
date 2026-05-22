@@ -7,6 +7,10 @@ import { allocateNextProductSku } from "@/server/lib/allocate-product-sku"
 import { products } from "@/db/schema"
 import { deleteImagesFromStorage } from "@/utils/supabase/storage"
 
+function normalizeImages(images: string[] | null | undefined): string[] {
+  return Array.isArray(images) ? images : []
+}
+
 export const productsRouter = new Hono()
   .get("/", async (c) => {
     const adminId = c.get("adminId")
@@ -21,13 +25,14 @@ export const productsRouter = new Hono()
   .post("/", zValidator("json", productSchema), async (c) => {
     const adminId = c.get("adminId")
     const { price, images, ...data } = c.req.valid("json")
+    const normalizedImages = normalizeImages(images)
 
     await db.transaction(async (tx) => {
       const sku = await allocateNextProductSku(tx, adminId)
       await tx.insert(products).values({
         ...data,
         adminId,
-        images,
+        images: normalizedImages,
         sku,
         price: price.toString()
       })
@@ -40,6 +45,7 @@ export const productsRouter = new Hono()
     const adminId = c.get("adminId")
     const { id } = c.req.param()
     const { price, images, ...data } = c.req.valid("json")
+    const normalizedImages = normalizeImages(images)
 
     // Retrieve old product to check for removed images
     const [oldProduct] = await db
@@ -53,9 +59,11 @@ export const productsRouter = new Hono()
         )
       )
 
-    if (oldProduct && oldProduct.images.length > 0) {
-      const removedImages = oldProduct.images.filter(
-        (oldImg: string) => !images?.includes(oldImg)
+    const previousImages = normalizeImages(oldProduct?.images)
+
+    if (previousImages.length > 0) {
+      const removedImages = previousImages.filter(
+        (oldImg: string) => !normalizedImages.includes(oldImg)
       )
       if (removedImages.length > 0) {
         // Fire and forget storage cleanup
@@ -65,7 +73,7 @@ export const productsRouter = new Hono()
 
     await db
       .update(products)
-      .set({ ...data, images, price: price.toString() })
+      .set({ ...data, images: normalizedImages, price: price.toString() })
       .where(
         and(
           eq(products.id, id),
@@ -93,9 +101,11 @@ export const productsRouter = new Hono()
         )
       )
 
-    if (oldProduct && oldProduct.images.length > 0) {
+    const previousImages = normalizeImages(oldProduct?.images)
+
+    if (previousImages.length > 0) {
       // Fire and forget storage cleanup
-      deleteImagesFromStorage(oldProduct.images)
+      deleteImagesFromStorage(previousImages)
     }
 
     await db

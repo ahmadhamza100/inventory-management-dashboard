@@ -7,6 +7,7 @@ import {
   NumberField,
   FieldError,
   Separator,
+  Label,
   cn
 } from "@heroui/react"
 import { formatPrice, FORMAT_CURRENCY_OPTS } from "@/utils/helpers"
@@ -60,6 +61,7 @@ export function InvoiceSummary() {
               onBlur={field.onBlur}
               aria-label="Amount paid"
             >
+              <Label>Amount paid</Label>
               <NumberField.Group>
                 <NumberField.DecrementButton />
                 <NumberField.Input placeholder="0.00" />

@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   Button,
   TextField,
+  Label,
   Input,
   FieldError,
   Spinner,
@@ -94,7 +95,7 @@ export function CustomersForm() {
   return (
     <FormProvider {...form}>
       <form
-        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden"
+        className="flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden p-2"
         onSubmit={(e) => {
           e.preventDefault()
           requestSubmitWithBlur()
@@ -116,6 +117,7 @@ export function CustomersForm() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Customer name</Label>
               <Input placeholder="Enter customer name" aria-label="Name" />
               <FieldError>{fieldState.error?.message}</FieldError>
             </TextField>
@@ -136,6 +138,7 @@ export function CustomersForm() {
               ref={field.ref}
               type="email"
             >
+              <Label>Email</Label>
               <Input
                 placeholder="customer@example.com"
                 aria-label="Email"
@@ -159,6 +162,7 @@ export function CustomersForm() {
               ref={field.ref}
               type="tel"
             >
+              <Label>Phone</Label>
               <Input placeholder="+1234567890" aria-label="Phone" />
               <FieldError>{fieldState.error?.message}</FieldError>
             </TextField>
@@ -178,6 +182,7 @@ export function CustomersForm() {
               value={field.value ?? ""}
               ref={field.ref}
             >
+              <Label>Address</Label>
               <Input placeholder="Enter customer address" aria-label="Address" />
               <FieldError>{fieldState.error?.message}</FieldError>
             </TextField>

@@ -10,7 +10,8 @@ import {
   toast,
   TextField,
   Input,
-  FieldError
+  FieldError,
+  Label
 } from "@heroui/react"
 import { FormError } from "@/components/form-error"
 import {
@@ -92,6 +93,7 @@ export function ChangePasswordForm() {
                 value={field.value}
                 ref={field.ref}
               >
+                <Label>Current password</Label>
                 <Input
                   type="password"
                   placeholder="Enter current password"
@@ -115,6 +117,7 @@ export function ChangePasswordForm() {
                 value={field.value}
                 ref={field.ref}
               >
+                <Label>New password</Label>
                 <Input
                   type="password"
                   placeholder="Enter new password"
@@ -138,6 +141,7 @@ export function ChangePasswordForm() {
                 value={field.value}
                 ref={field.ref}
               >
+                <Label>Confirm new password</Label>
                 <Input
                   type="password"
                   placeholder="Confirm new password"

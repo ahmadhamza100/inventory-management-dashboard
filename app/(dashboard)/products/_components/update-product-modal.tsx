@@ -37,7 +37,7 @@ export function UpdateProductModal() {
                 </span>
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <ProductsForm key={productId ?? "update"} />
             </Modal.Body>
           </Modal.Dialog>

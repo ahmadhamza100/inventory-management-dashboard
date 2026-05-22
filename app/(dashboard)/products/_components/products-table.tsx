@@ -264,6 +264,7 @@ export function ProductsTable() {
         <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
           <SearchField
             className="min-w-0"
+            aria-label="Search products"
             value={q}
             onChange={(value) => setSearchParams({ q: value })}
           >

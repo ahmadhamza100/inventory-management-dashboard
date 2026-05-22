@@ -10,6 +10,7 @@ import {
   TextField,
   Input,
   FieldError,
+  Label,
   toast,
   buttonVariants,
   cn
@@ -127,6 +128,7 @@ export default function ResetPasswordPage() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Email</Label>
               <Input
                 type="email"
                 placeholder="you@example.com"

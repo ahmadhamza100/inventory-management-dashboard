@@ -31,7 +31,7 @@ export function CreateCustomerModal() {
                 Add a new customer to your system
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <CustomersForm />
             </Modal.Body>
           </Modal.Dialog>

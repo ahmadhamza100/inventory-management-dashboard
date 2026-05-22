@@ -5,7 +5,7 @@ import { Link } from "@/components/link"
 import { newPasswordSchema } from "@/validations/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { Button, TextField, Input, FieldError, toast } from "@heroui/react"
+import { Button, TextField, Input, FieldError, Label, toast } from "@heroui/react"
 import { Logo } from "@/components/logo"
 import { createClient } from "@/utils/supabase/client"
 import { ROUTES } from "@/utils/routes"
@@ -61,6 +61,7 @@ export default function NewPasswordPage() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>New password</Label>
               <Input
                 type="password"
                 placeholder="••••••••"
@@ -84,6 +85,7 @@ export default function NewPasswordPage() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Confirm password</Label>
               <Input
                 type="password"
                 placeholder="••••••••"

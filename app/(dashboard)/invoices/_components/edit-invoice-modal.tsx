@@ -31,7 +31,7 @@ export function EditInvoiceModal() {
                 Update invoice details
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <InvoiceForm />
             </Modal.Body>
           </Modal.Dialog>

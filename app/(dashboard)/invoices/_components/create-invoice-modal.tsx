@@ -31,7 +31,7 @@ export function CreateInvoiceModal() {
                 Add a new invoice to your system
               </p>
             </Modal.Header>
-            <Modal.Body className="p-1">
+            <Modal.Body className="p-2">
               <InvoiceForm />
             </Modal.Body>
           </Modal.Dialog>

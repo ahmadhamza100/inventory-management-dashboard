@@ -5,7 +5,7 @@ import { Link } from "@/components/link"
 import { loginSchema } from "@/validations/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { Button, Input, TextField, FieldError, toast } from "@heroui/react"
+import { Button, Input, TextField, FieldError, Label, toast } from "@heroui/react"
 import { Logo } from "@/components/logo"
 import { createClient } from "@/utils/supabase/client"
 import { ROUTES } from "@/utils/routes"
@@ -85,6 +85,7 @@ export default function LoginPage() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Email</Label>
               <Input
                 type="email"
                 placeholder="you@example.com"
@@ -108,6 +109,7 @@ export default function LoginPage() {
               value={field.value}
               ref={field.ref}
             >
+              <Label>Password</Label>
               <Input
                 type="password"
                 placeholder="••••••••"
