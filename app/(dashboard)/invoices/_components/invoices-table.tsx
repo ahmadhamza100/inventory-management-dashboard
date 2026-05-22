@@ -384,7 +384,7 @@ export function InvoicesTable() {
                   ? `${totalCount} invoices`
                   : `${filteredCount} of ${totalCount} invoices`}
               </p>
-              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
                 <SearchField
                   className="min-w-0 sm:min-w-0"
                   aria-label="Search invoices"
