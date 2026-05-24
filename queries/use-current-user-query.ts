@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/utils/supabase/client"
 import { getUserName } from "@/utils/auth"
 
@@ -11,11 +12,13 @@ export function useCurrentUserQuery() {
     }
   })
 
+  const user: Partial<User> & { name: string } = {
+    ...data,
+    name: getUserName(data)
+  }
+
   return {
     ...query,
-    user: {
-      ...data,
-      name: getUserName(data)
-    }
+    user
   }
 }
